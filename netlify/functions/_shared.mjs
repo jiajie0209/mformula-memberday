@@ -14,6 +14,8 @@ const STATUSES = ['running', 'paused', 'updating', 'ended', 'closed'];
 
 export const DEFAULT_CONFIG = {
   rev: 1, status: 'running', weights: { ...DEFAULT_WEIGHTS }, codes: {}, updatedAt: 0,
+  dayDraws: [5, 1, 1, 1, 1, 1, 3], shareBonus: 2, orderBonus: 3, redeemMs: 86400000,
+  activityStart: '2026-07-01',   // KL 日期;测试期可设成今天,上线前设回 2026-07-01
 };
 
 function cfgStore() {
@@ -29,6 +31,11 @@ export async function loadConfig() {
   cfg.weights = { ...DEFAULT_WEIGHTS, ...(cfg.weights && typeof cfg.weights === 'object' ? cfg.weights : {}) };
   cfg.codes = (cfg.codes && typeof cfg.codes === 'object') ? cfg.codes : {};
   cfg.rev = Number.isFinite(cfg.rev) ? cfg.rev : 1;
+  cfg.dayDraws = (Array.isArray(cfg.dayDraws) && cfg.dayDraws.length === 7) ? cfg.dayDraws : [5, 1, 1, 1, 1, 1, 3];
+  cfg.shareBonus = Number.isFinite(cfg.shareBonus) ? cfg.shareBonus : 2;
+  cfg.orderBonus = Number.isFinite(cfg.orderBonus) ? cfg.orderBonus : 3;
+  cfg.redeemMs = Number.isFinite(cfg.redeemMs) ? cfg.redeemMs : 86400000;
+  cfg.activityStart = (typeof cfg.activityStart === 'string') ? cfg.activityStart : '2026-07-01';
   return cfg;
 }
 

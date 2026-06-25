@@ -15,7 +15,7 @@ export default async (req) => {
     let mutated = false;
 
     if (action === 'get') {
-      return json({ ok: true, status: cfg.status, weights: cfg.weights, codes: cfg.codes, rev: cfg.rev });
+      return json({ ok: true, status: cfg.status, weights: cfg.weights, codes: cfg.codes, rev: cfg.rev, activityStart: cfg.activityStart, dayDraws: cfg.dayDraws });
     } else if (action === 'setStatus') {
       const s = String(body.status || '');
       if (!isStatus(s)) return json({ ok: false, error: 'bad status' });
@@ -30,6 +30,9 @@ export default async (req) => {
     } else if (action === 'delCode') {
       const c = String(body.code || '').trim().toUpperCase();
       const nc = { ...cfg.codes }; delete nc[c]; cfg.codes = nc; mutated = true;
+    } else if (action === 'setActivityStart') {
+      const d = String(body.date || ''); if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return json({ ok: false, error: 'bad date' });
+      cfg.activityStart = d; mutated = true;
     } else {
       return json({ ok: false, error: 'unknown action' });
     }
