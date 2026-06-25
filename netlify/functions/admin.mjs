@@ -33,6 +33,8 @@ export default async (req) => {
     } else if (action === 'setActivityStart') {
       const d = String(body.date || ''); if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return json({ ok: false, error: 'bad date' });
       cfg.activityStart = d; mutated = true;
+    } else if (action === 'setServerDraws') {
+      cfg.serverDraws = !!body.on; mutated = true;   // 全开/关闭服务器版抽奖
     } else {
       return json({ ok: false, error: 'unknown action' });
     }

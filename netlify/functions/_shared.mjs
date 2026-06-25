@@ -16,6 +16,7 @@ export const DEFAULT_CONFIG = {
   rev: 1, status: 'running', weights: { ...DEFAULT_WEIGHTS }, codes: {}, updatedAt: 0,
   dayDraws: [5, 1, 1, 1, 1, 1, 3], shareBonus: 2, orderBonus: 3, redeemMs: 86400000,
   activityStart: '2026-07-01',   // KL 日期;测试期可设成今天,上线前设回 2026-07-01
+  serverDraws: false,            // 灰度全开开关:true = 所有顾客走服务器版抽奖
 };
 
 function cfgStore() {
@@ -36,6 +37,7 @@ export async function loadConfig() {
   cfg.orderBonus = Number.isFinite(cfg.orderBonus) ? cfg.orderBonus : 3;
   cfg.redeemMs = Number.isFinite(cfg.redeemMs) ? cfg.redeemMs : 86400000;
   cfg.activityStart = (typeof cfg.activityStart === 'string') ? cfg.activityStart : '2026-07-01';
+  cfg.serverDraws = !!cfg.serverDraws;
   return cfg;
 }
 

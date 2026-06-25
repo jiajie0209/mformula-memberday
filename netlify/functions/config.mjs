@@ -7,7 +7,7 @@ export const config = { path: '/api/config' };
 export default async () => {
   try {
     const cfg = await loadConfig();
-    return json({ ok: true, rev: cfg.rev, status: cfg.status, weights: cfg.weights });
+    return json({ ok: true, rev: cfg.rev, status: cfg.status, weights: cfg.weights, serverDraws: cfg.serverDraws });
   } catch (e) {
     return json({ ok: false, error: String(e && e.message || e) }, 500);
   }
