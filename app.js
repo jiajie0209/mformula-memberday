@@ -74,6 +74,30 @@ function saveStatus(){ localStorage.setItem('mf_status', actStatus); }
 let actStatus = loadStatus();
 const isRunning = () => actStatus==='running';
 
+/* ---------------- 后端 API(连不上自动退回本机 localStorage) ---------------- */
+const MF = { api:false, rev:0, adminSecret:null };
+async function apiGET(path){ const r=await fetch(path,{cache:'no-store'}); if(!r.ok) throw new Error('http '+r.status); return r.json(); }
+async function apiPOST(path,body){ try{ const r=await fetch(path,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)}); return await r.json(); }catch(e){ return {ok:false,error:'net'}; } }
+async function adminWrite(payload){    // 管理员写 → 服务器(成功返回结果,失败返回 null)
+  if(!MF.api||!MF.adminSecret) return null;
+  const r=await apiPOST('/api/admin',{secret:MF.adminSecret,...payload});
+  if(r&&r.ok){ MF.rev=r.rev||MF.rev; return r; }
+  return null;
+}
+async function bootstrapServer(){      // 启动时拉取服务器共用配置;失败则用本机
+  try{
+    const c=await apiGET('/api/config');
+    if(c&&c.ok){
+      MF.api=true; MF.rev=c.rev||0;
+      if(c.weights) weights={...weights,...c.weights};
+      if(c.status) actStatus=c.status;
+      const home=$('screen-home'), adm=$('screen-admin');
+      if(home&&home.classList.contains('active')) renderHome();
+      if(adm&&adm.classList.contains('active')) renderAdmin();
+    }
+  }catch(e){ MF.api=false; }
+}
+
 /* ---------------- 兑换码(送额外抽奖次数) ---------------- */
 const DEFAULT_PROMO = { 'MEMBERDAY':5, 'MFORMULA':3, 'LIEW888':10 };
 function loadPromo(){ try{ const p=JSON.parse(localStorage.getItem('mf_promo')); if(p&&typeof p==='object') return {...DEFAULT_PROMO, ...p}; }catch(e){} return {...DEFAULT_PROMO}; }
@@ -336,13 +360,23 @@ function codeModal(){
     <input id="codeInput" class="m-input" placeholder="例如 MEMBERDAY" autocapitalize="characters" autocomplete="off">`,
     [{label:'兑换', action:()=>redeemCode($('codeInput')&&$('codeInput').value)},{label:'关闭', sub:true}]);
 }
-function redeemCode(raw){
+async function redeemCode(raw){
   const code=(raw||'').trim().toUpperCase();
   if(!code){ toastModal('请输入兑换码'); return; }
-  if(!(code in promoCodes)){ toastModal('兑换码无效 🙈'); return; }
   if(S.usedCodes.includes(code)){ toastModal('这个码你已经用过啦 🙂'); return; }
-  S.usedCodes.push(code); S.chances += promoCodes[code]; save(); renderTop();
-  modal('🎁', `+${promoCodes[code]} 次抽奖!`, `兑换码 <b>${code}</b> 已生效,继续转大转盘!`, [{label:'去抽奖', action:()=>go('home')}]);
+  let draws=0;
+  if(MF.api){                                  // 服务器校验(含管理员加的码)
+    const r=await apiPOST('/api/redeem',{code});
+    if(r&&r.ok){ draws=r.draws; }
+    else if(code in promoCodes){ draws=promoCodes[code]; }   // 服务器没回应 → 退回本机内置码
+    else { toastModal('兑换码无效 🙈'); return; }
+  } else {
+    if(!(code in promoCodes)){ toastModal('兑换码无效 🙈'); return; }
+    draws=promoCodes[code];
+  }
+  if(!(draws>0)){ toastModal('兑换码无效 🙈'); return; }
+  S.usedCodes.push(code); S.chances += draws; save(); renderTop();
+  modal('🎁', `+${draws} 次抽奖!`, `兑换码 <b>${code}</b> 已生效,继续转大转盘!`, [{label:'去抽奖', action:()=>go('home')}]);
 }
 
 /* ---------------- 下单 / WhatsApp ---------------- */
@@ -403,7 +437,7 @@ function renderAdmin(){
   const codes=`<div class="adm-card"><div class="adm-h">🎁 兑换码(送抽奖次数)</div>
     ${list||'<div class="adm-empty">还没有码</div>'}
     <div class="code-add"><input id="newCode" placeholder="新码 如 BONUS10" autocapitalize="characters"><input id="newCodeN" type="number" inputmode="numeric" placeholder="次数" min="1" max="99"><button id="addCodeBtn">+ 添加</button></div>
-    <div class="adm-note">内置码所有 user 都能用;你这里加的码是 demo(只存本机)。真实共享码需 Backend。</div></div>`;
+    <div class="adm-note">${MF.api?'✅ <b>已连服务器</b>:你加的码对<b>所有顾客即时生效</b>。':'⚠️ 未连服务器,加的码只存本机。'}内置码(MEMBERDAY/MFORMULA/LIEW888)永远可用。</div></div>`;
   const totalW = WHEEL.reduce((s,p)=>s+(weights[p.key]||0),0);
   const wlist = WHEEL.map(p=>{ const w=weights[p.key]||0; const pct=totalW>0?(w/totalW*100):0; const nm=p.sa===p.sb?p.sa:`${p.sa}/${p.sb}`;
     return `<div class="w-row"><span class="wn">${p.emoji} ${nm}</span><input class="w-in" type="number" min="0" step="0.5" value="${w}" data-wkey="${p.key}"><span class="wp">${pct.toFixed(1)}%</span></div>`; }).join('');
@@ -413,16 +447,18 @@ function renderAdmin(){
   const actCard = `<div class="adm-card act-card"><div class="adm-h">🎛 活动控制</div>
     <div class="act-cur ${cur.tone}">当前状态:<b>${cur.emoji} ${cur.label}</b></div>
     <div class="act-btns">${stOpts.map(([k,lbl])=>`<button class="act-set ${actStatus===k?'on':''}" data-act="${k}">${lbl}</button>`).join('')}</div>
-    <div class="adm-note">非「进行中」时,用户会看到对应提示且不能抽奖(已抽中的好礼仍可在 24 小时内兑换)。<b>demo 只存本机</b>;要对所有 user 同时生效需 Backend。</div></div>`;
+    <div class="adm-note">非「进行中」时,用户会看到对应提示且不能抽奖(已抽中的好礼仍可在 24 小时内兑换)。${MF.api?'✅ <b>已连服务器:改了对所有顾客即时生效</b>。':'⚠️ 未连服务器,只存本机。'}</div></div>`;
   $('adminBody').innerHTML=`<div class="adm-note top">⚠️ 下面人数/排行是 <b>demo 模拟数据</b>。真实跨用户统计需接 Backend(我可帮你做)。</div>${actCard}${stats}${lb}${weightsCard}${codes}<button class="ghost" id="admLogout">退出登录</button>`;
-  const add=$('addCodeBtn'); if(add) add.onclick=()=>{
+  const add=$('addCodeBtn'); if(add) add.onclick=async ()=>{
     const c=($('newCode').value||'').trim().toUpperCase(), n=parseInt($('newCodeN').value,10);
     if(!c||!(n>0)){ toastModal('填写码和次数 🙂'); return; }
-    promoCodes[c]=n; savePromo(); renderAdmin();
+    promoCodes[c]=n; savePromo();
+    if(MF.api && !(await adminWrite({action:'addCode',code:c,draws:n}))) toastModal('已存本机,但没同步到服务器,稍后重试 ⚠️');
+    renderAdmin();
   };
-  $('adminBody').querySelectorAll('[data-delcode]').forEach(b=>b.onclick=()=>{ delete promoCodes[b.dataset.delcode]; savePromo(); renderAdmin(); });
-  $('adminBody').querySelectorAll('[data-wkey]').forEach(inp=>{ inp.onchange=()=>{ const v=parseFloat(inp.value); weights[inp.dataset.wkey]=(isFinite(v)&&v>=0)?v:0; saveWeights(); renderAdmin(); }; });
-  $('adminBody').querySelectorAll('[data-act]').forEach(b=>b.onclick=()=>{ actStatus=b.dataset.act; saveStatus(); renderAdmin(); });
+  $('adminBody').querySelectorAll('[data-delcode]').forEach(b=>b.onclick=async ()=>{ const c=b.dataset.delcode; delete promoCodes[c]; savePromo(); if(MF.api) await adminWrite({action:'delCode',code:c}); renderAdmin(); });
+  $('adminBody').querySelectorAll('[data-wkey]').forEach(inp=>{ inp.onchange=async ()=>{ const v=parseFloat(inp.value); weights[inp.dataset.wkey]=(isFinite(v)&&v>=0)?v:0; saveWeights(); if(MF.api) await adminWrite({action:'setWeights',weights}); renderAdmin(); }; });
+  $('adminBody').querySelectorAll('[data-act]').forEach(b=>b.onclick=async ()=>{ actStatus=b.dataset.act; saveStatus(); if(MF.api) await adminWrite({action:'setStatus',status:actStatus}); renderAdmin(); });
   const lo=$('admLogout'); if(lo) lo.onclick=logout;
 }
 
@@ -482,6 +518,7 @@ $('loginBtn').onclick=async ()=>{
   S.name=name; S.phone=phone; S.loggedIn=true;
   try{ S.admin = (await sha256Hex(name.toLowerCase()+'|'+phone.replace(/\D/g,'')))===CONFIG.ADMIN_HASH; }   // 口令哈希校验
   catch(e){ S.admin=false; }
+  if(S.admin) MF.adminSecret = phone.replace(/\D/g,'');   // 口令同时用于服务器写授权
   save();
   go(S.admin?'admin':'home');
 };
@@ -519,4 +556,6 @@ function tickRedeem(){
 setInterval(tickRedeem, 1000);
 
 /* ---------------- 启动 ---------------- */
+if(S.admin && S.phone) MF.adminSecret = S.phone.replace(/\D/g,'');   // 刷新后仍是管理员 → 恢复写授权
 if(S.loggedIn) go(S.admin?'admin':'home'); else go('login');
+bootstrapServer();   // 拉取服务器共用配置(状态/权重/兑换码);连不上自动退回本机
