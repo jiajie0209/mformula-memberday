@@ -1,0 +1,4 @@
+# MFormula Member Day — 纯静态网站,无需构建
+[build]
+  publish = "."
+  command = ""
