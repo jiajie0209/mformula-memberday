@@ -123,3 +123,20 @@ export async function pickPrize(weights, ownedSet) {
 }
 
 export const idxOf = key => WHEEL_KEYS.indexOf(key);
+
+/* ---------- 下单价格(服务器端重算,防 2box/4box 翻倍作弊) ---------- */
+export const PKG_PRICE = { '2box': 358, '4box': 716 };
+export const SLOTS = { '2box': 2, '4box': 3 };
+export const DISC = { v5: [5, 10], v10: [10, 20], v30: [30, 60], v50: [50, 100] }; // [2box, 4box]
+export function redeemExpired(member, key, redeemMs) {
+  const t = member.wonAt && member.wonAt[key];
+  return !!t && (t + redeemMs <= Date.now());
+}
+export function computeOrder(pkg, bundle) {
+  const price = PKG_PRICE[pkg] || PKG_PRICE['2box'];
+  if (bundle.includes('free')) return { final: 0, disc: price, free: true };
+  const idx = pkg === '4box' ? 1 : 0;
+  let disc = 0;
+  for (const k of bundle) if (DISC[k]) disc += DISC[k][idx];
+  return { final: Math.max(0, price - disc), disc, free: false };
+}
