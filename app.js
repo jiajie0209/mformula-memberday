@@ -8,7 +8,6 @@ const CONFIG = {
   WHATSAPP: '60173628890',   // 客服 WhatsApp(国际格式 60+号码,去掉开头0)= 0173628890
   ADMIN_HASH: '0f42704958d1c021c6a3f5ce85fe75ccd9aad2205e6726f2f54d5de6813ba43d', // 超级权限口令的 SHA-256(明文不进代码)。当前 = 名字 Liew + 电话栏填 20260701
   DAY_DRAWS: [5,1,1,1,1,1,3],// 每天的抽奖次数:第1天5次 · 第2–6天各1次 · 第7天3次
-  SHARE_BONUS: 2,           // 分享 → +抽奖次数
   ORDER_BONUS: 3,           // 下单 → +抽奖次数
   SPIN_MS: 4000,            // 转盘旋转时长
   REDEEM_MS: 24*60*60*1000, // 抽中好礼的兑换有效期:24 小时,过期失效
@@ -112,7 +111,7 @@ const ADMIN_LB = [
 let S = load();
 function load(){
   const def = { name:'', phone:'', loggedIn:false, admin:false, day:1, chances:drawsForDay(1),
-                won:[], wonAt:{}, bundle:[], pickPkg:'2box', codes:{}, sharedToday:false, usedCodes:[] };
+                won:[], wonAt:{}, bundle:[], pickPkg:'2box', codes:{}, usedCodes:[] };
   let s={};
   try{ s = JSON.parse(localStorage.getItem('mfmemberday')) || {}; }catch(e){}
   const m = { ...def, ...s };
@@ -165,8 +164,6 @@ function renderTop(){
 /* ---------------- 大厅 ---------------- */
 function renderHome(){
   renderTop();
-  $('shareBar').textContent = S.sharedToday ? '✓ 已分享' : `📲 分享 +${CONFIG.SHARE_BONUS}次`;
-  $('shareBar').disabled = S.sharedToday;
   $('adminEntry').style.display = S.admin ? 'flex' : 'none';
   buildWheel();   // 注:#drawsLeft 由 applyActivityState() 统一更新(暂停时按钮无此元素)
   renderWon();
@@ -336,20 +333,13 @@ function renderBundle(){
   $('bundleBody').innerHTML=h;
 }
 
-/* ---------------- 续命:分享/下单/兑换码 ---------------- */
+/* ---------------- 续命:下单/兑换码 ---------------- */
 function noChanceModal(){
   const btns=[];
-  if(!S.sharedToday) btns.push({label:`📲 分享 +${CONFIG.SHARE_BONUS}次`, action:doShare});
   btns.push({label:`🎁 输入兑换码`, action:codeModal});
   btns.push({label:`🛒 去下单（+${CONFIG.ORDER_BONUS}次）`, action:()=>go('home')});
   btns.push({label:'关闭', sub:true});
-  modal('⚡','抽奖次数用完?别等明天!', `分享 <b>+${CONFIG.SHARE_BONUS}</b> 次、输入兑换码、或下单 <b>+${CONFIG.ORDER_BONUS}</b> 次 —— 马上继续抽。`, btns);
-}
-function doShare(){
-  if(S.sharedToday){ toastModal('今天已经分享过啦,明天再 +次 🙂'); return; }
-  S.sharedToday=true; S.chances+=CONFIG.SHARE_BONUS; save(); renderTop();
-  modal('🎉',`分享成功 · +${CONFIG.SHARE_BONUS}次!`,`抽奖次数到账,继续转大转盘!<br><span style="font-size:11px;color:#7d8893">(真实版分享到 WhatsApp,后台核实后到账)</span>`,
-    [{label:'去抽奖', action:()=>go('home')}]);
+  modal('⚡','抽奖次数用完?别等明天!', `输入兑换码、或下单 <b>+${CONFIG.ORDER_BONUS}</b> 次 —— 马上继续抽。`, btns);
 }
 function grantOrderBonus(){ S.chances+=CONFIG.ORDER_BONUS; save(); renderTop(); }
 
@@ -472,7 +462,7 @@ function renderHelp(){
     <div class="help-h">大奖</div>
     <div class="help-p">转盘上有 <b>免单</b> 和 <b>999 足金</b> —— 概率超低,看得到、超难中,抽到就是天选之子 🍀。</div>
     <div class="help-h">抽奖次数(每天不同)</div>
-    <div class="help-p"><b>第 1 天 5 次</b> · 第 2–6 天每天 1 次 · <b>第 7 天 3 次</b>。用完别等 —— <b>分享 +${CONFIG.SHARE_BONUS}</b>、<b>输入兑换码</b>、<b>下单 +${CONFIG.ORDER_BONUS}</b> 立刻继续。</div>
+    <div class="help-p"><b>第 1 天 5 次</b> · 第 2–6 天每天 1 次 · <b>第 7 天 3 次</b>。用完别等 —— <b>输入兑换码</b>或<b>下单 +${CONFIG.ORDER_BONUS}</b> 立刻继续。</div>
     <div class="help-h">好礼 24 小时内兑换</div>
     <div class="help-p">抽中的好礼会<b>倒数 24 小时</b>,请在失效前联系客服兑换,过期作废。活动 1/7–7/7。</div>`;
 }
@@ -505,7 +495,7 @@ $('nextDayBtn').onclick=()=>{
     modal('🏆','Member Day 结束!',`活动结束啦。你抽中了 <b>${S.won.length}</b> 件好礼。<br>点下面重置 demo。`,[{label:'重玩 demo',action:()=>{ localStorage.removeItem('mfmemberday'); location.reload(); }}]);
     return;
   }
-  S.day++; S.chances=drawsForDay(S.day); S.sharedToday=false; save();
+  S.day++; S.chances=drawsForDay(S.day); save();
   go('home');
   modal('☀️',`进入 Day ${S.day}`,`今天的抽奖次数:<b>${drawsForDay(S.day)}</b> 次。<br>继续转大转盘赢好礼!`,[{label:'去抽奖'}]);
 };
@@ -522,7 +512,6 @@ $('loginBtn').onclick=async ()=>{
   save();
   go(S.admin?'admin':'home');
 };
-$('shareBar').onclick=doShare;
 function logout(){
   modal('🔓','退出登录?','回到登入页,可换名字/电话重新登入(本机进度会清空,方便换人测试)。',
     [{label:'退出登录', action:()=>{ localStorage.removeItem('mfmemberday'); S=load(); if($('loginName'))$('loginName').value=''; if($('loginPhone'))$('loginPhone').value=''; go('login'); }},

@@ -80,10 +80,7 @@ html,body{height:100%;background:#d7d0c0;font-family:"PingFang SC","PingFang TC"
 .social-proof::before{content:"🔥";font-size:17px;}
 .social-proof b{color:var(--danger);font-size:16px;font-weight:800;}
 
-.quick-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 16px 0;}
-.share-bar{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;margin:0;background:linear-gradient(95deg,#4A9C8E,#3d8a7d);border:none;border-radius:13px;padding:13px 8px;cursor:pointer;box-shadow:0 8px 18px rgba(74,156,142,.25);color:#fff;font-size:13px;font-weight:700;}
-.share-bar:active{transform:translateY(1px);}
-.share-bar:disabled{background:#cdd6d2;color:#fff;box-shadow:none;}
+.quick-row{display:grid;grid-template-columns:1fr;gap:10px;margin:12px 16px 0;}
 .code-bar{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;margin:0;background:#fff;border:1.5px solid #f0d9a8;border-radius:13px;padding:13px 8px;font-size:13px;font-weight:700;color:var(--gold-d);box-shadow:0 4px 12px rgba(213,162,60,.1);}
 .code-bar:active{transform:translateY(1px);}
 .admin-entry{align-items:center;justify-content:center;width:calc(100% - 32px);margin:10px 16px 0;background:var(--navy);color:var(--gold-ll);border:none;border-radius:13px;padding:12px;font-size:13px;font-weight:800;box-shadow:0 8px 18px rgba(14,57,71,.25);}
