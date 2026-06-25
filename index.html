@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>MFormula · Member Day</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="phone" class="bare">
+
+  <header id="topbar">
+    <div class="tb-logo">
+      <img src="assets/logo-white.png" alt="MFORMULA" class="logo-img"
+           onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+      <span class="logo-text" style="display:none">MFORMULA<small>by natureLISH</small></span>
+    </div>
+    <div class="tb-right"><span class="tb-sub">今日抽奖</span><span class="tb-pts" id="chancesVal">5</span></div>
+  </header>
+
+  <div id="countdownBar">
+    <span class="cd-seg">⏳ 还剩 <b id="endCountdown">7</b> 天</span>
+    <span class="cd-seg cd-sp">🔥 <b id="spCount">92</b> 人已抽奖下单</span>
+    <button id="nextDayBtn">下一天</button>
+  </div>
+
+  <main id="main">
+
+    <!-- ============ 登入 ============ -->
+    <section class="screen active" id="screen-login">
+      <div class="login-logo"><img src="assets/logo-white.png" alt="MFormula by natureLISH"></div>
+      <div class="login-card">
+        <div class="login-badge">★ 老顾客专属</div>
+        <div class="login-title"><h1>会员登入</h1></div>
+        <div class="login-sub">Member Day 老顾客专属 · 填名字 + 电话即可进入</div>
+        <label class="lf"><span>姓名</span><input id="loginName" type="text" placeholder="您的姓名"></label>
+        <label class="lf"><span>电话号码</span><input id="loginPhone" type="tel" inputmode="tel" placeholder="012-345 6789"></label>
+        <button id="loginBtn">进入活动 →</button>
+        <div class="login-note">🔒 资料仅用于本次会员日活动</div>
+      </div>
+    </section>
+
+    <!-- ============ 大厅 ============ -->
+    <section class="screen" id="screen-home">
+      <div class="hero">
+        <div class="hero-kicker">MEMBER DAY · 会员日</div>
+        <div class="hero-t">转大转盘,<b>免费抽好礼!</b></div>
+        <div class="hero-s">完全免费玩 🎡 转一下就能赢好礼<br>喜欢的话,再选配套带回家(不买也行)</div>
+      </div>
+
+      <div class="act-banner" id="actBanner" style="display:none"></div>
+
+      <div class="quick-row">
+        <button class="share-bar" id="shareBar"></button>
+        <button class="code-bar" id="codeBar">🎁 兑换码</button>
+      </div>
+      <button class="admin-entry" id="adminEntry" data-go="admin" style="display:none">🛠 进入超级权限后台 →</button>
+
+      <div class="sec-title"><span class="sec-num">1</span><span>转大转盘,免费赢好礼</span><span class="sec-note">免费玩,赢了再搭配</span></div>
+      <div class="wheel-wrap">
+        <div class="wheel-pointer"></div>
+        <div class="wheel" id="wheel"></div>
+        <div class="wheel-hub">🎡</div>
+      </div>
+      <button class="spin-btn" id="spinBtn">🎡 抽奖!（还有 <b id="drawsLeft">5</b> 次）</button>
+      <div class="up-hint">
+        <div class="uh-title">
+          <span class="uh-x2">×2</span>
+          选 <b>4 Boxes</b> 配套,好礼自动翻倍!
+        </div>
+        <div class="uh-rows">
+          <span class="uh-pill"><span class="uh-from">RM5</span><span class="uh-arr">→</span><span class="uh-to">RM10</span></span>
+          <span class="uh-pill"><span class="uh-from">5包</span><span class="uh-arr">→</span><span class="uh-to">10包</span></span>
+          <span class="uh-pill"><span class="uh-from">15包</span><span class="uh-arr">→</span><span class="uh-to">1盒</span></span>
+        </div>
+      </div>
+
+      <div class="layer-head" id="wonHead"></div>
+      <div class="reward-grid" id="wonGrid"></div>
+
+      <div class="sec-title"><span class="sec-num">2</span><span>想带回家?选个配套</span><span class="sec-note">不买也行</span></div>
+      <div class="pkg-pick" id="pkgPick"></div>
+
+      <div class="bundle-title">我的搭配</div>
+      <div class="bundle-card"><div id="bundleBody"></div></div>
+
+      <button class="cta" id="waBtn">📲 联系客服下单(WhatsApp)</button>
+      <div class="cta-note">点击生成专属兑换码 · 客服核对即可发货</div>
+      <button class="ghost" data-go="help">玩法 / 规则说明</button>
+      <button class="ghost" id="logoutBtn">退出登录</button>
+    </section>
+
+    <!-- ============ 超级权限后台 ============ -->
+    <section class="screen" id="screen-admin">
+      <div class="screen-head"><button class="back" data-go="home">‹ 用户视角</button><h2>🛠 超级权限</h2></div>
+      <div id="adminBody"></div>
+    </section>
+
+    <!-- ============ 帮助 ============ -->
+    <section class="screen" id="screen-help">
+      <div class="screen-head"><button class="back" data-go="home">‹ 返回</button><h2>玩法 / 规则</h2></div>
+      <div id="helpBody"></div>
+    </section>
+
+  </main>
+
+  <div id="modal" class="modal hidden">
+    <div class="modal-card" id="modalCard"><div id="modalBody"></div><div id="modalBtns"></div></div>
+  </div>
+
+</div>
+<script src="app.js"></script>
+</body>
+</html>

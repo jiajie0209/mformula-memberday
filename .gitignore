@@ -1,0 +1,14 @@
+# 系统/工具
+.DS_Store
+.claude/
+
+# 旧原型 & 设计文件(不上线)
+_redesign/
+penalty-shootout/
+match3.html
+match3.css
+match3.js
+
+# assets 里未使用的重复原图(中文名/旧名)
+assets/MFormula_*
+assets/礼物-*
