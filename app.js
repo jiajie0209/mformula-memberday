@@ -6,7 +6,7 @@
 
 const CONFIG = {
   WHATSAPP: '60173628890',   // 客服 WhatsApp(国际格式 60+号码,去掉开头0)= 0173628890
-  ADMIN: { name:'Liew', phone:'0173628890' },   // ← 这个名字+电话登入 = 超级权限(改成只有你知道的)
+  ADMIN_HASH: '0f42704958d1c021c6a3f5ce85fe75ccd9aad2205e6726f2f54d5de6813ba43d', // 超级权限口令的 SHA-256(明文不进代码)。当前 = 名字 Liew + 电话栏填 20260701
   DAY_DRAWS: [5,1,1,1,1,1,3],// 每天的抽奖次数:第1天5次 · 第2–6天各1次 · 第7天3次
   SHARE_BONUS: 2,           // 分享 → +抽奖次数
   ORDER_BONUS: 3,           // 下单 → +抽奖次数
@@ -14,6 +14,10 @@ const CONFIG = {
   REDEEM_MS: 24*60*60*1000, // 抽中好礼的兑换有效期:24 小时,过期失效
 };
 const drawsForDay = d => CONFIG.DAY_DRAWS[Math.min(Math.max(d|0,1),7)-1] || 1;
+async function sha256Hex(str){   // 用于校验超级权限口令(明文不入代码)
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
+}
 
 // 配套(固定价) slots = 这单能带几件好礼
 const PACKAGES = [
@@ -471,12 +475,13 @@ $('nextDayBtn').onclick=()=>{
 };
 
 /* ---------------- 登入 / 登出 ---------------- */
-$('loginBtn').onclick=()=>{
+$('loginBtn').onclick=async ()=>{
   const name=$('loginName').value.trim(), phone=$('loginPhone').value.trim();
   if(!name){ toastModal('请填写你的名字 🙂'); return; }
   if(!/^[0-9+\-\s]{7,}$/.test(phone)){ toastModal('电话号码好像不太对,检查一下 🙂'); return; }
   S.name=name; S.phone=phone; S.loggedIn=true;
-  S.admin = (name.toLowerCase()===CONFIG.ADMIN.name.toLowerCase() && phone.replace(/\D/g,'')===CONFIG.ADMIN.phone.replace(/\D/g,''));
+  try{ S.admin = (await sha256Hex(name.toLowerCase()+'|'+phone.replace(/\D/g,'')))===CONFIG.ADMIN_HASH; }   // 口令哈希校验
+  catch(e){ S.admin=false; }
   save();
   go(S.admin?'admin':'home');
 };
