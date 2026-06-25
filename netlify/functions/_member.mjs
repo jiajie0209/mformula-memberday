@@ -43,6 +43,16 @@ export function sessionCookie(id) {
   return `mfsess=${encodeURIComponent(signSession(id))}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=2592000`;
 }
 
+/* ---------- 管理员 cookie(口令只在服务器环境变量,前端不存哈希) ---------- */
+function adminTok() { return 'a1.' + hmac('mfadmin-v1'); }
+export function adminCookieOK(req) {
+  const c = (req.headers.get('cookie') || '').match(/mfadmin=([^;]+)/);
+  return !!c && decodeURIComponent(c[1]) === adminTok();
+}
+export function adminCookie() {
+  return `mfadmin=${encodeURIComponent(adminTok())}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=43200`; // 12h
+}
+
 /* ---------- KL 日期 + 活动第几天 ---------- */
 export function klDate(now = Date.now()) {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kuala_Lumpur' }).format(new Date(now)); // YYYY-MM-DD

@@ -1,6 +1,7 @@
 // POST /api/admin — 管理员写操作(需口令)。改动写进共用配置 → 全顾客下次读到
 // action: get | setStatus | setWeights | addCode | delCode
 import { loadConfig, saveConfig, adminOK, clampWeights, isStatus, json } from './_shared.mjs';
+import { adminCookieOK } from './_member.mjs';
 
 export const config = { path: '/api/admin' };
 
@@ -8,7 +9,7 @@ export default async (req) => {
   try {
     if (req.method !== 'POST') return json({ ok: false, error: 'method' }, 405);
     const body = await req.json().catch(() => ({}));
-    if (!adminOK(body.secret)) return json({ ok: false, error: 'auth' }, 401);
+    if (!(adminCookieOK(req) || adminOK(body.secret))) return json({ ok: false, error: 'auth' }, 401);
 
     const action = String(body.action || '');
     const cfg = await loadConfig();
