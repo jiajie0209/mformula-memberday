@@ -483,12 +483,18 @@ $('codeBar') && ($('codeBar').onclick=codeModal);
 /* ---------------- 超级权限后台 ---------------- */
 function renderAdmin(){
   renderTop();
-  const unlocked=spCount, contacted=Math.round(spCount*0.42), active=spCount+27;
+  const live = MF.api;
+  const dP=spCount, dO=Math.round(spCount*0.42), dS=spCount+27;   // demo 兜底(没连服务器时)
   const stats=`<div class="adm-stats">
-    <div class="adm-stat"><div class="n">${unlocked}</div><div class="l">抽奖参与人数</div></div>
-    <div class="adm-stat"><div class="n">${contacted}</div><div class="l">联系客服下单</div></div>
-    <div class="adm-stat"><div class="n">${active}</div><div class="l">今日活跃</div></div></div>`;
-  const lb=`<div class="adm-card"><div class="adm-h">🏆 谁最强(中奖最多)</div>${ADMIN_LB.map((p,i)=>`<div class="adm-lb"><span class="r ${i<3?'top':''}">${i+1}</span><span class="nm">${p.name}</span><span class="v">中奖 ${p.n} 件</span></div>`).join('')}</div>`;
+    <div class="adm-stat"><div class="n" id="stP">${live?'…':dP}</div><div class="l">参与人数</div></div>
+    <div class="adm-stat"><div class="n" id="stS">${live?'…':dS}</div><div class="l">总抽奖次数</div></div>
+    <div class="adm-stat"><div class="n" id="stO">${live?'…':dO}</div><div class="l">下单数</div></div></div>`;
+  const lbDemo = ADMIN_LB.map((p,i)=>`<div class="adm-lb"><span class="r ${i<3?'top':''}">${i+1}</span><span class="nm">${p.name}</span><span class="v">中奖 ${p.n} 件</span></div>`).join('');
+  const lb=`<div class="adm-card"><div class="adm-h">🏆 谁最强(中奖最多)</div><div id="admLb">${live?'<div class="adm-empty">加载中…</div>':lbDemo}</div></div>`;
+  const csCard = live ? `<div class="adm-card"><div class="adm-h">🔎 客服核对兑换码</div>
+    <div class="code-add"><input id="csCode" placeholder="顾客的码 如 MD-2B-123456" autocapitalize="characters"><button id="csBtn">核对</button></div>
+    <div id="csResult"></div>
+    <div class="adm-note">输入顾客发来的下单码 → 核对配套/好礼/价格(以服务器记录为准,防改 WhatsApp 文字)。</div></div>` : '';
   const list=Object.entries(promoCodes).map(([c,n])=>`<div class="code-row"><span class="cc">${c}</span><span class="cn">+${n} 次</span><button class="code-del" data-delcode="${c}">✕</button></div>`).join('');
   const codes=`<div class="adm-card"><div class="adm-h">🎁 兑换码(送抽奖次数)</div>
     ${list||'<div class="adm-empty">还没有码</div>'}
@@ -504,7 +510,8 @@ function renderAdmin(){
     <div class="act-cur ${cur.tone}">当前状态:<b>${cur.emoji} ${cur.label}</b></div>
     <div class="act-btns">${stOpts.map(([k,lbl])=>`<button class="act-set ${actStatus===k?'on':''}" data-act="${k}">${lbl}</button>`).join('')}</div>
     <div class="adm-note">非「进行中」时,用户会看到对应提示且不能抽奖(已抽中的好礼仍可在 24 小时内兑换)。${MF.api?'✅ <b>已连服务器:改了对所有顾客即时生效</b>。':'⚠️ 未连服务器,只存本机。'}</div></div>`;
-  $('adminBody').innerHTML=`<div class="adm-note top">⚠️ 下面人数/排行是 <b>demo 模拟数据</b>。真实跨用户统计需接 Backend(我可帮你做)。</div>${actCard}${stats}${lb}${weightsCard}${codes}<button class="ghost" id="admLogout">退出登录</button>`;
+  const topNote = live ? '✅ 下面是<b>真实数据</b>(服务器实时统计)。' : '⚠️ 下面人数/排行是 <b>demo 模拟数据</b>(未连服务器)。';
+  $('adminBody').innerHTML=`<div class="adm-note top">${topNote}</div>${actCard}${stats}${lb}${csCard}${weightsCard}${codes}<button class="ghost" id="admLogout">退出登录</button>`;
   const add=$('addCodeBtn'); if(add) add.onclick=async ()=>{
     const c=($('newCode').value||'').trim().toUpperCase(), n=parseInt($('newCodeN').value,10);
     if(!c||!(n>0)){ toastModal('填写码和次数 🙂'); return; }
@@ -515,7 +522,42 @@ function renderAdmin(){
   $('adminBody').querySelectorAll('[data-delcode]').forEach(b=>b.onclick=async ()=>{ const c=b.dataset.delcode; delete promoCodes[c]; savePromo(); if(MF.api) await adminWrite({action:'delCode',code:c}); renderAdmin(); });
   $('adminBody').querySelectorAll('[data-wkey]').forEach(inp=>{ inp.onchange=async ()=>{ const v=parseFloat(inp.value); weights[inp.dataset.wkey]=(isFinite(v)&&v>=0)?v:0; saveWeights(); if(MF.api) await adminWrite({action:'setWeights',weights}); renderAdmin(); }; });
   $('adminBody').querySelectorAll('[data-act]').forEach(b=>b.onclick=async ()=>{ actStatus=b.dataset.act; saveStatus(); if(MF.api) await adminWrite({action:'setStatus',status:actStatus}); renderAdmin(); });
+  const csBtn=$('csBtn'); if(csBtn) csBtn.onclick=csVerify;
   const lo=$('admLogout'); if(lo) lo.onclick=logout;
+  if(live) loadAdminStats();
+}
+async function loadAdminStats(){           // 拉真实统计 + 排行榜
+  const r = await adminWrite({action:'stats'});
+  if(!r || !r.ok || !r.stats) return;
+  const st=r.stats;
+  if($('stP')) $('stP').textContent = st.participants||0;
+  if($('stS')) $('stS').textContent = st.spins||0;
+  if($('stO')) $('stO').textContent = st.orders||0;
+  const winners = Object.values(st.winners||{}).sort((a,b)=>(b.n||0)-(a.n||0)).slice(0,8);
+  const el=$('admLb');
+  if(el) el.innerHTML = winners.length
+    ? winners.map((w,i)=>`<div class="adm-lb"><span class="r ${i<3?'top':''}">${i+1}</span><span class="nm">${w.name}</span><span class="v">中奖 ${w.n} 件</span></div>`).join('')
+    : '<div class="adm-empty">还没有人中奖</div>';
+}
+async function csVerify(){                  // 客服核对下单兑换码
+  const code=($('csCode').value||'').trim().toUpperCase();
+  const box=$('csResult'); if(!box) return;
+  if(!code){ box.innerHTML='<div class="cs-bad">请输入兑换码</div>'; return; }
+  box.innerHTML='<div class="adm-empty">核对中…</div>';
+  const r = await adminWrite({action:'csVerify', code});
+  if(!r || !r.ok){ box.innerHTML='<div class="cs-bad">服务器没回应,再试一次</div>'; return; }
+  if(!r.rec){ box.innerHTML='<div class="cs-bad">❌ 找不到这个码(可能是假的或打错了)</div>'; return; }
+  const rec=r.rec;
+  const items=(rec.bundle||[]).length ? rec.bundle.map(k=>{const p=byKey(k); return p?(rec.pkg==='4box'?p.sb:p.sa):k;}).join('、') : '(无好礼)';
+  const statusTxt = rec.status==='redeemed' ? '<span class="cs-used">⚠️ 已发货过</span>' : '<span class="cs-ok">✓ 有效 · 未发货</span>';
+  box.innerHTML=`<div class="cs-card">
+    <div class="cs-row">${statusTxt}</div>
+    <div class="cs-row">会员:<b>${rec.name||''}</b>(${rec.phone||''})</div>
+    <div class="cs-row">配套:${rec.pkg==='4box'?'4 Boxes RM716':'2 Boxes RM358'}</div>
+    <div class="cs-row">好礼:${items}</div>
+    <div class="cs-row">应付:<b>${rec.free?'RM0(免单)':'RM'+rec.final}</b></div>
+    ${rec.status!=='redeemed'?'<button id="csRedeemBtn" class="act-set" style="margin-top:8px">标记已发货</button>':''}</div>`;
+  const rb=$('csRedeemBtn'); if(rb) rb.onclick=async ()=>{ const rr=await adminWrite({action:'csRedeem',code}); if(rr&&rr.ok) csVerify(); };
 }
 
 /* ---------------- 帮助 ---------------- */

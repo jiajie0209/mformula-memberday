@@ -1,6 +1,6 @@
 // POST /api/spin — 服务器端权威抽奖:校验状态/天数/次数 → 服务器加权抽(只抽未拥有)→ 扣库存 → CAS 扣次数+记奖
 import { loadConfig, json } from './_shared.mjs';
-import { parseSession, getMember, casMember, chancesOf, dayInfo, pickPrize, spendStock, loadStock, saveStock, idxOf, STOCK_DEFAULT } from './_member.mjs';
+import { parseSession, getMember, casMember, chancesOf, dayInfo, pickPrize, spendStock, loadStock, saveStock, idxOf, STOCK_DEFAULT, bumpStats, maskName } from './_member.mjs';
 
 export const config = { path: '/api/spin' };
 
@@ -39,6 +39,7 @@ export default async (req) => {
 
     // CAS:再校验次数 + 没重复 → 扣次数 + 记奖
     let res = { ok: false, reason: 'retry' };
+    let winName = '', winCount = 0;
     await casMember(id, (cur) => {
       if (!cur) { res = { ok: false, reason: 'nosession' }; return null; }
       if ((cur.won || []).includes(key)) { res = { ok: false, reason: 'dup' }; return null; }
@@ -46,9 +47,11 @@ export default async (req) => {
       cur.won = cur.won || []; cur.won.push(key);
       cur.wonAt = cur.wonAt || {}; cur.wonAt[key] = Date.now();
       cur.lastSeen = Date.now();
+      winName = cur.name; winCount = cur.won.length;
       res = { ok: true, idx: idxOf(key), prize: key, chances: chancesOf(cur, todayKey), wonAt: cur.wonAt[key] };
       return cur;
     });
+    if (res.ok) await bumpStats(s => { s.spins = (s.spins || 0) + 1; s.prizeCounts[key] = (s.prizeCounts[key] || 0) + 1; s.winners[id] = { name: maskName(winName), n: winCount }; });
 
     // 没记成(并发等)→ 把预扣的库存还回去(gold 哨兵不回收,概率默认 0)
     if (!res.ok && STOCK_DEFAULT[key] !== undefined && key !== 'gold') {

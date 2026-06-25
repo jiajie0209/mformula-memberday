@@ -150,3 +150,19 @@ export function computeOrder(pkg, bundle) {
   for (const k of bundle) if (DISC[k]) disc += DISC[k][idx];
   return { final: Math.max(0, price - disc), disc, free: false };
 }
+
+/* ---------- 真实统计(尽力更新,作分析用) ---------- */
+const statsStore = () => getStore({ name: 'mfstats', consistency: 'strong' });
+export async function loadStats() {
+  try { const s = await statsStore().get('current', { type: 'json' }); if (s && typeof s === 'object') return s; } catch (e) {}
+  return { participants: 0, spins: 0, orders: 0, prizeCounts: {}, winners: {} };
+}
+export async function bumpStats(fn) {
+  try { const s = await loadStats(); s.prizeCounts = s.prizeCounts || {}; s.winners = s.winners || {}; fn(s); await statsStore().setJSON('current', s); } catch (e) {}
+}
+export function maskName(n) { n = String(n || '').trim(); return n.length <= 1 ? (n + '***') : (n.slice(0, Math.min(3, n.length)) + '***'); }
+
+/* ---------- 下单记录(客服核对兑换码) ---------- */
+const redStore = () => getStore({ name: 'mfredemptions', consistency: 'strong' });
+export async function saveRedemption(rec) { try { await redStore().setJSON(rec.code, rec); } catch (e) {} }
+export async function getRedemption(code) { try { return await redStore().get(code, { type: 'json' }); } catch (e) { return null; } }

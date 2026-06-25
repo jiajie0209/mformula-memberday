@@ -1,6 +1,6 @@
 // POST /api/order — 服务器端下单:校验拥有+未过期 → 重算价格 → 发一次性兑换码 → 每日首单 +次数
 import { loadConfig, json } from './_shared.mjs';
-import { parseSession, casMember, chancesOf, dayInfo, computeOrder, redeemExpired, ULTRA, SLOTS } from './_member.mjs';
+import { parseSession, casMember, chancesOf, dayInfo, computeOrder, redeemExpired, ULTRA, SLOTS, bumpStats, saveRedemption } from './_member.mjs';
 import crypto from 'node:crypto';
 
 export const config = { path: '/api/order' };
@@ -45,9 +45,14 @@ export default async (req) => {
       }
       cur.lastSeen = Date.now();
       const code = orderCode(pkg, id, pkg + '|' + valid.slice().sort().join(',') + '|' + cur.orderCount);
-      res = { ok: true, code, pkg, bundle: valid, final: calc.final, disc: calc.disc, free: calc.free, orderBonus: granted, chances: chancesOf(cur, todayKey) };
+      res = { ok: true, code, pkg, bundle: valid, final: calc.final, disc: calc.disc, free: calc.free, orderBonus: granted, chances: chancesOf(cur, todayKey), _name: cur.name, _phone: cur.phone };
       return cur;
     });
+    if (res.ok) {
+      await bumpStats(s => { s.orders = (s.orders || 0) + 1; });
+      await saveRedemption({ code: res.code, memberId: id, name: res._name, phone: res._phone, pkg: res.pkg, bundle: res.bundle, final: res.final, free: res.free, status: 'issued', at: Date.now() });
+      delete res._name; delete res._phone;
+    }
     return json(res);
   } catch (e) {
     return json({ ok: false, error: String(e && e.message || e) }, 500);

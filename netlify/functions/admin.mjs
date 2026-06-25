@@ -1,7 +1,7 @@
 // POST /api/admin — 管理员写操作(需口令)。改动写进共用配置 → 全顾客下次读到
 // action: get | setStatus | setWeights | addCode | delCode
 import { loadConfig, saveConfig, adminOK, clampWeights, isStatus, json } from './_shared.mjs';
-import { adminCookieOK } from './_member.mjs';
+import { adminCookieOK, loadStats, getRedemption, saveRedemption } from './_member.mjs';
 
 export const config = { path: '/api/admin' };
 
@@ -15,7 +15,20 @@ export default async (req) => {
     const cfg = await loadConfig();
     let mutated = false;
 
-    if (action === 'get') {
+    if (action === 'stats') {
+      return json({ ok: true, stats: await loadStats() });
+    } else if (action === 'csVerify') {
+      const c = String(body.code || '').trim().toUpperCase();
+      const rec = await getRedemption(c);
+      return json({ ok: true, rec: rec || null });
+    } else if (action === 'csRedeem') {
+      const c = String(body.code || '').trim().toUpperCase();
+      const rec = await getRedemption(c);
+      if (!rec) return json({ ok: false, error: 'notfound' });
+      rec.status = 'redeemed'; rec.redeemedAt = Date.now();
+      await saveRedemption(rec);
+      return json({ ok: true, rec });
+    } else if (action === 'get') {
       return json({ ok: true, status: cfg.status, weights: cfg.weights, codes: cfg.codes, rev: cfg.rev, activityStart: cfg.activityStart, dayDraws: cfg.dayDraws });
     } else if (action === 'setStatus') {
       const s = String(body.status || '');
