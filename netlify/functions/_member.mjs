@@ -166,3 +166,25 @@ export function maskName(n) { n = String(n || '').trim(); return n.length <= 1 ?
 const redStore = () => getStore({ name: 'mfredemptions', consistency: 'strong' });
 export async function saveRedemption(rec) { try { await redStore().setJSON(rec.code, rec); } catch (e) {} }
 export async function getRedemption(code) { try { return await redStore().get(code, { type: 'json' }); } catch (e) { return null; } }
+
+/* ---------- 待跟进名单:玩过但没下单的会员(供导出/Airtable) ---------- */
+export async function listLeads() {
+  const store = memStore();
+  const out = [];
+  let cursor;
+  do {
+    const res = await store.list({ cursor });
+    const blobs = res.blobs || [];
+    const members = await Promise.all(blobs.map(b => store.get(b.key, { type: 'json' }).catch(() => null)));
+    for (const m of members) {
+      if (!m) continue;
+      const drawsUsed = Object.values(m.days || {}).reduce((s, d) => s + (d.used || 0), 0) + (m.bonusUsed || 0);
+      const played = (m.won || []).length > 0 || drawsUsed > 0;
+      if (played && !(m.orderCount > 0)) {
+        out.push({ name: m.name, phone: m.phone, prizes: m.won || [], wonAt: m.wonAt || {}, drawsUsed, lastSeen: m.lastSeen || 0 });
+      }
+    }
+    cursor = res.cursor;
+  } while (cursor);
+  return out;
+}

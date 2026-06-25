@@ -529,3 +529,8 @@ table.help-t tr td:first-child{font-weight:700;background:#faf6ec;white-space:no
 .cs-ok{color:#2c8a5f;font-weight:800;}
 .cs-used{color:#bf6a1a;font-weight:800;}
 .cs-bad{color:#b03b3b;font-weight:700;font-size:13px;margin-top:8px;}
+
+/* ---------- 导出名单按钮 ---------- */
+.lead-btn{display:block;width:100%;background:linear-gradient(180deg,#E2B655,#D5A23C 60%,#bf8e2c);color:#3a2a07;border:none;border-radius:11px;padding:12px;font-size:14px;font-weight:800;box-shadow:0 6px 14px rgba(213,162,60,.3);}
+.lead-btn:active{transform:translateY(1px);}
+.lead-btn:disabled{background:#cbd2cf;color:#fff;box-shadow:none;}

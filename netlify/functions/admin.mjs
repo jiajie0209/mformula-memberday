@@ -1,7 +1,7 @@
 // POST /api/admin — 管理员写操作(需口令)。改动写进共用配置 → 全顾客下次读到
 // action: get | setStatus | setWeights | addCode | delCode
 import { loadConfig, saveConfig, adminOK, clampWeights, isStatus, json } from './_shared.mjs';
-import { adminCookieOK, loadStats, getRedemption, saveRedemption } from './_member.mjs';
+import { adminCookieOK, loadStats, getRedemption, saveRedemption, listLeads } from './_member.mjs';
 
 export const config = { path: '/api/admin' };
 
@@ -17,6 +17,8 @@ export default async (req) => {
 
     if (action === 'stats') {
       return json({ ok: true, stats: await loadStats() });
+    } else if (action === 'leads') {
+      return json({ ok: true, leads: await listLeads() });
     } else if (action === 'csVerify') {
       const c = String(body.code || '').trim().toUpperCase();
       const rec = await getRedemption(c);
