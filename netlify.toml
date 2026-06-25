@@ -1,4 +1,8 @@
-# MFormula Member Day — 纯静态网站,无需构建
+# MFormula Member Day — 静态前端 + Netlify Functions 后端
 [build]
   publish = "."
   command = ""
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"

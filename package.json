@@ -1,0 +1,9 @@
+{
+  "name": "mformula-memberday",
+  "version": "1.0.0",
+  "private": true,
+  "description": "MFormula Member Day 大转盘 — Netlify backend functions",
+  "dependencies": {
+    "@netlify/blobs": "^8.1.0"
+  }
+}
