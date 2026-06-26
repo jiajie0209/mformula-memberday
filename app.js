@@ -98,6 +98,7 @@ async function bootstrapServer(){      // 启动时拉取服务器共用配置;�
       MF.api=true; MF.rev=c.rev||0;
       if(c.weights) weights={...weights,...c.weights};
       if(c.status) actStatus=c.status;
+      if(typeof c.participants==='number') spCount = c.participants;   // 真实参与人数(社会证明)
       if(S.admin && S.phone) await apiPOST('/api/admin-login', {pass:S.phone.replace(/\D/g,'')});  // 刷新后续期管理员 cookie
       MF.p2 = !!(URL_API || c.serverDraws);            // 灰度:?api=1(测试)或服务器全开
       if(MF.p2){
@@ -195,22 +196,27 @@ function renderHome(){
   renderBundle();
   applyActivityState();
 }
+// 返回「不能抽奖」的原因(未开始/已结束/暂停…),可抽则 null
+function homeBlock(){
+  if(MF.p2 && S.day < 1) return {tone:'off', emoji:'🗓️', label:'活动还没开始', msg:'Member Day 7 月 1 日开始,敬请期待!到时来转大转盘 🎡'};
+  if(MF.p2 && S.day > 7) return {tone:'end', emoji:'🏁', label:'活动已结束', msg:'本次 Member Day 已结束,感谢参与 🎉'};
+  if(!isRunning()){ const st=ACT_STATES[actStatus]||ACT_STATES.running; return {tone:st.tone, emoji:st.emoji, label:st.label, msg:st.msg||''}; }
+  return null;
+}
 function applyActivityState(){
-  const st = ACT_STATES[actStatus] || ACT_STATES.running;
+  const hb = homeBlock();
   const banner = $('actBanner'), btn = $('spinBtn');
   if(banner){
-    if(isRunning()){ banner.style.display='none'; }
-    else{ banner.style.display='flex'; banner.className=`act-banner ${st.tone}`;
-      banner.innerHTML = `<span class="ab-emoji">${st.emoji}</span><span class="ab-txt"><b>${st.label}</b><small>${st.msg||''}</small></span>`; }
+    if(!hb){ banner.style.display='none'; }
+    else{ banner.style.display='flex'; banner.className=`act-banner ${hb.tone}`;
+      banner.innerHTML = `<span class="ab-emoji">${hb.emoji}</span><span class="ab-txt"><b>${hb.label}</b><small>${hb.msg||''}</small></span>`; }
   }
   if(btn){
-    btn.disabled = !isRunning();
-    btn.innerHTML = isRunning()
-      ? `🎡 抽奖!（还有 <b id="drawsLeft">${S.chances}</b> 次）`
-      : `${st.emoji} ${st.label}`;
+    btn.disabled = !!hb;
+    btn.innerHTML = hb ? `${hb.emoji} ${hb.label}` : `🎡 抽奖!（还有 <b id="drawsLeft">${S.chances}</b> 次）`;
   }
 }
-function statusModal(){ const st=ACT_STATES[actStatus]||ACT_STATES.running; modal(st.emoji, st.label, st.msg||'请稍后再来 🙏', [{label:'知道了'}]); }
+function statusModal(){ const hb=homeBlock(); if(hb) modal(hb.emoji, hb.label, hb.msg||'请稍后再来 🙏', [{label:'知道了'}]); }
 
 /* ---------------- 转盘 ---------------- */
 let wheelRot = 0, spinning = false;
@@ -246,7 +252,7 @@ function animateTo(idx, done){      // 把第 idx 格转到顶部指针,转完�
 }
 function spin(){
   if(spinning) return;
-  if(!isRunning()){ statusModal(); return; }
+  if(homeBlock()){ statusModal(); return; }
   if(MF.p2){ spinServer(); return; }                   // 灰度:服务器版抽奖(防作弊)
   if(S.chances<=0){ noChanceModal(); return; }
   spinning=true; S.chances--; save(); renderTop(); setDrawsLeft();
@@ -658,8 +664,10 @@ $('logoutBtn').onclick=logout;
 
 /* ---------------- 实时感:社会证明 + 库存被抢 ---------------- */
 function tickLive(){
-  spCount += 1 + (Math.random()<0.3 ? 1 : 0);
-  const sp=$('spCount'); if(sp) sp.textContent=spCount;
+  if(!MF.api){                                  // 仅 demo(没连服务器)时假增长;服务器版用真实数字
+    spCount += 1 + (Math.random()<0.3 ? 1 : 0);
+    const sp=$('spCount'); if(sp) sp.textContent=spCount;
+  }
   if(Math.random()<0.5){
     const cands=DRIFT.filter(k=>stock[k]>1);
     if(cands.length){ const k=cands[(Math.random()*cands.length)|0]; stock[k]--; }
