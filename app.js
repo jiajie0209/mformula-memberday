@@ -70,8 +70,8 @@ let actStatus = loadStatus();
 const isRunning = () => actStatus==='running';
 
 /* ---------------- 后端 API(连不上自动退回本机 localStorage) ---------------- */
-const MF = { api:false, p2:false, rev:0 };
 const URL_API = new URLSearchParams(location.search).get('api')==='1';   // 灰度开关:网址加 ?api=1
+const MF = { api:false, p2:URL_API, rev:0 };   // ?api=1 一打开就进服务器模式(避免登入早于 bootstrap 的竞速)
 async function apiGET(path){ const r=await fetch(path,{cache:'no-store'}); if(!r.ok) throw new Error('http '+r.status); return r.json(); }
 async function apiPOST(path,body){ try{ const r=await fetch(path,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)}); return await r.json(); }catch(e){ return {ok:false,error:'net'}; } }
 async function adminWrite(payload){    // 管理员写 → 服务器(httpOnly cookie 携带授权)
@@ -262,18 +262,22 @@ function spin(){
 $('spinBtn') && $('spinBtn').addEventListener('click', spin);
 
 // 服务器版:结果 + 次数都由服务器决定(清缓存刷不回、结果改不了)
-async function spinServer(){
+async function spinServer(retried){
   if(S.chances<=0){ noChanceModal(); return; }
   spinning=true; renderTop();
   let r; try{ r = await apiPOST('/api/spin', {}); }catch(e){ r=null; }
   if(!r || !r.ok){
-    spinning=false;
     const why = r && r.reason;
+    if(why==='nosession' && !retried && !S.admin){          // 会话掉了 → 自动重连再试一次
+      const sr = await serverSession();
+      if(sr && sr.ok){ spinning=false; return spinServer(true); }
+    }
+    spinning=false;
     if(why==='nochance'){ S.chances=0; save(); renderTop(); setDrawsLeft(); noChanceModal(); }
     else if(why==='notrunning'){ if(r.status) actStatus=r.status; applyActivityState(); statusModal(); }
     else if(why==='window'){ toastModal('活动还没开始哦,7 月 1 日见 🗓️'); }
     else if(why==='soldout'){ toastModal('这些好礼刚好被抽完了,过阵子再来 🙂'); }
-    else if(why==='nosession'){ toastModal('请退出重新登入一下 🙂'); }
+    else if(why==='nosession'){ toastModal(S.admin?'管理员账号不能玩抽奖哦,请用顾客身份(名字+大马手机号)登入 🙂':'登入掉了,请退出重新登入一下 🙂'); }
     else toastModal('网络有点慢,再试一次 🙂');
     return;
   }
