@@ -307,14 +307,18 @@ function showWinModal(key){
   const p=byKey(key); const im=wonImg(key);
   const img = im ? `<img src="assets/${im}" alt="" onerror="this.replaceWith(document.createTextNode('${p.emoji}'))">` : p.emoji;
   const scales = JSON.stringify(p.a)!==JSON.stringify(p.b);
+  // 升级诱因:选 4 Boxes → 这件升级成 b 版本(前置给顾客看)
+  const upgrade = (scales && p.type!=='ultra')
+    ? `<div class="m-upgrade">选 <b>4 Boxes</b> 配套 → 这件升级成 <b>${p.b.label}</b> ⬆️</div>` : '';
   modalRaw(
     `<div class="m-glow"></div>
-     <div class="m-kicker" style="color:#4A9C8E">🎉 恭喜抽中</div>
+     <div class="m-kicker" style="color:#4A9C8E">🎉 恭喜!你抽中</div>
      <div class="m-emoji">${img}</div>
      <div class="m-name">${pv(p).label}</div>
-     <div class="m-pill ${p.type==='ultra'?'d-legend':'d-easy'}">${p.type==='ultra'?'🏆 传说大奖 · 太幸运了!':(scales?'已放进我的好礼 · 选 4 盒翻倍 ⬆️':'已放进我的好礼')}</div>
-     <div class="m-redeem">⏳ 请在 <b>24 小时内</b>联系客服兑换,过期失效</div>`,
-    [{label: S.chances>0?'再抽一次 →':'去搭配下单', action:()=>{}},
+     ${p.type==='ultra'?'<div class="m-pill d-legend">🏆 传说大奖 · 太幸运了!</div>':''}
+     ${upgrade}
+     <div class="m-redeem">✅ 已帮你放进「我的好礼」· 请 <b>24 小时内</b>找客服领取</div>`,
+    [{label: S.chances>0?'再抽一次 →':'去找客服领取', action:()=>{}},
      {label:'看我的好礼', sub:true, action:()=>{ const el=$('wonHead'); if(el) el.scrollIntoView({behavior:'smooth'}); }}]);
 }
 
@@ -328,14 +332,26 @@ function pruneExpired(){ const b=S.bundle.length; S.bundle=S.bundle.filter(k=>!i
 function renderWon(){
   pruneExpired();
   const lim=prizeLimit();
-  $('wonHead').innerHTML = `🎁 我赢到的好礼 <span class="lh-pill">下单可带 ${S.bundle.length}/${lim} 件</span>`;
-  if(!S.won.length){ $('wonGrid').innerHTML = `<div class="won-empty">还没抽到 —— 转一下大转盘试试手气 🎡</div>`; return; }
+  if(!S.won.length){
+    $('wonHead').innerHTML = `<div class="won-title">🎁 我赢到的好礼</div>`;
+    $('wonGrid').innerHTML = `<div class="won-empty">还没抽到 —— 转一下大转盘试试手气 🎡</div>`;
+    return;
+  }
+  // 顶部:大白话引导 + 醒目的「最早失效」大倒数
+  const active = S.won.filter(k=>!isExpired(k));
+  const cdBar = active.length
+    ? `<div class="won-cd"><span class="wc-l">⏳ 好礼还有</span><b class="wc-t" data-cdall="1">${fmtDur(Math.min.apply(null, active.map(k=>redeemLeft(k))))}</b><span class="wc-l">就失效,快找客服领取!</span></div>`
+    : '';
+  $('wonHead').innerHTML =
+    `<div class="won-title">🎁 恭喜!你抽中了这些好礼 <span class="lh-pill">已带 ${S.bundle.length}/${lim} 件</span></div>
+     <div class="won-guide">✅ 已帮你自动带上最值钱的,<b>直接选配套找客服就行</b>(想换才点别的)。</div>
+     ${cdBar}`;
   $('wonGrid').innerHTML = S.won.map(k=>{
     const p=byKey(k); const exp=isExpired(k); const picked=S.bundle.includes(k); const im=wonImg(k);
     const img = im ? `<img src="assets/${im}" alt="" onerror="this.replaceWith(document.createTextNode('${p.emoji}'))">` : p.emoji;
     const cd = exp ? `<div class="rwc-cd expired">⌛ 已失效</div>`
-                   : `<div class="rwc-cd" data-cd="${k}">⏳ ${fmtDur(redeemLeft(k))} 内兑换</div>`;
-    const stateTxt = exp ? '已过 24 小时' : (picked?'✓ 已带上':'＋ 点一下带上');
+                   : `<div class="rwc-cd" data-cd="${k}">⏳ ${fmtDur(redeemLeft(k))}</div>`;
+    const stateTxt = exp ? '已过 24 小时' : (picked?'✓ 帮你带上了':'想换?点这件');
     return `<button class="rwc ${exp?'expired':(picked?'picked':'unlocked')} ${p.type==='ultra'?'wultra':''}" data-won="${k}" ${exp?'disabled':''}>
       ${p.type==='ultra'?'<div class="rwc-legend">★ 传说</div>':''}
       <div class="rwc-img">${img}</div>
@@ -356,16 +372,25 @@ function toggleBundle(key){
   if(S.bundle.length >= prizeLimit()){ toastModal(`这个配套只能带 ${prizeLimit()} 件,先取消一件 🙂`); return; }
   S.bundle.push(key); save(); renderHome();
 }
-function autoPick(key){    // 抽中后静默带上(满了/独占冲突就不带)
-  if(S.bundle.includes(key)) return;
-  if(isUltra(key)){ S.bundle=[key]; return; }
+// 好礼价值排名(越大越值钱)→ 自动帮顾客带「最好的」
+const PRIZE_RANK = { gold:1000, free:900, duffle:60, v50:50, tumbler:45, v30:30, g15:22, g10:14, v10:10, g5:8, v5:5 };
+const bestSort = arr => arr.slice().sort((a,b)=>(PRIZE_RANK[b]||0)-(PRIZE_RANK[a]||0));
+function fillBest(){       // 用未带上、未过期的最值钱好礼补满空位
   if(S.bundle.find(isUltra)) return;
-  if(S.bundle.length < prizeLimit()) S.bundle.push(key);
+  const cands = bestSort(S.won.filter(k=>!isExpired(k) && !isUltra(k) && !S.bundle.includes(k)));
+  while(S.bundle.length < prizeLimit() && cands.length) S.bundle.push(cands.shift());
 }
-function trimBundle(){     // 换配套后收紧
+function autoPick(key){    // 抽中后自动带上「最值钱的几件」,顾客不用选
+  if(isUltra(key)){ S.bundle=[key]; return; }     // 传说独占
+  if(S.bundle.find(isUltra)) return;              // 已有传说,不动
+  if(!S.bundle.includes(key)) S.bundle.push(key);
+  S.bundle = bestSort(S.bundle).slice(0, prizeLimit());   // 只留最值钱的 N 件
+}
+function trimBundle(){     // 换配套后:留最值钱的,空位用最好的补满
   const u=S.bundle.find(isUltra);
   if(u){ S.bundle=[u]; return; }
-  if(S.bundle.length>prizeLimit()) S.bundle=S.bundle.slice(0,prizeLimit());
+  S.bundle = bestSort(S.bundle).slice(0, prizeLimit());
+  fillBest();
 }
 function price(){
   const pkg=curPkg();
@@ -686,8 +711,10 @@ function tickRedeem(){
   let expiredNow=false;
   document.querySelectorAll('[data-cd]').forEach(el=>{
     const k=el.dataset.cd, left=redeemLeft(k);
-    if(left<=0) expiredNow=true; else el.textContent=`⏳ ${fmtDur(left)} 内兑换`;
+    if(left<=0) expiredNow=true; else el.textContent=`⏳ ${fmtDur(left)}`;
   });
+  const big=document.querySelector('[data-cdall]');   // 顶部大倒数
+  if(big){ const act=S.won.filter(k=>!isExpired(k)); if(act.length) big.textContent=fmtDur(Math.min.apply(null, act.map(k=>redeemLeft(k)))); }
   const b=S.bundle.length; S.bundle=S.bundle.filter(k=>!isExpired(k));
   if(expiredNow || S.bundle.length!==b){ save(); if(home){ renderWon(); renderBundle(); } }
 }
