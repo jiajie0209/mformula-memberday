@@ -172,7 +172,7 @@ function setDrawsLeft(){ const el=$('drawsLeft'); if(el) el.textContent=S.chance
 /* ---------------- 顶部 ---------------- */
 function renderTop(){
   $('chancesVal').textContent = S.chances;
-  $('endCountdown').textContent = 8 - S.day;
+  $('endCountdown').textContent = Math.max(1, Math.min(7, 8 - S.day));   // 钳制 1–7,未开始时不显示怪数
   const sp=$('spCount'); if(sp) sp.textContent = spCount;
 }
 
