@@ -80,20 +80,33 @@ export function normName(n) { return String(n || '').trim().toLowerCase(); }
 export function normPhone(p) { let d = String(p || '').replace(/\D/g, ''); if (d.startsWith('60')) d = d.slice(2); if (d.startsWith('0')) d = d.slice(1); return /^1[0-9]{8,9}$/.test(d) ? d : null; }
 export async function memberId(name, phone) { const np = normPhone(phone); if (!np) return null; return (await sha256Hex(normName(name) + '|' + np)).slice(0, 32); }
 
-export async function signSession(env, id) { return id + '.' + (await hmacHex(env.SESSION_SECRET || 'dev', id)).slice(0, 24); }
+const SESSION_TTL = 2592000000;   // 30 天
+const ADMIN_TTL = 43200000;       // 12 小时
+// 不再回退 'dev':没配密钥就失败关闭(防止未配置时签出可伪造的 cookie)
+function sessSecret(env) { const s = env.SESSION_SECRET; if (!s) throw new Error('SESSION_SECRET_unset'); return s; }
+function adminSecret(env) { const s = env.ADMIN_SECRET; if (!s) throw new Error('ADMIN_SECRET_unset'); return s; }
+
+export async function signSession(env, id) {
+  const exp = Date.now() + SESSION_TTL, payload = id + '.' + exp;
+  return payload + '.' + (await hmacHex(sessSecret(env), payload)).slice(0, 24);
+}
 export async function sessionCookie(env, id) { return `mfsess=${encodeURIComponent(await signSession(env, id))}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=2592000`; }
 export async function parseSession(env, request) {
   const m = (request.headers.get('cookie') || '').match(/mfsess=([^;]+)/); if (!m) return null;
-  const val = decodeURIComponent(m[1]); const dot = val.lastIndexOf('.'); if (dot < 0) return null;
-  const id = val.slice(0, dot), sig = val.slice(dot + 1);
-  const want = (await hmacHex(env.SESSION_SECRET || 'dev', id)).slice(0, 24);
-  return (id && sig === want) ? id : null;
+  const parts = decodeURIComponent(m[1]).split('.'); if (parts.length !== 3) return null;
+  const [id, exp, sig] = parts;
+  if (!id || !/^\d+$/.test(exp) || Number(exp) < Date.now()) return null;        // 服务器端校验过期
+  const want = (await hmacHex(sessSecret(env), id + '.' + exp)).slice(0, 24);
+  return sig === want ? id : null;
 }
-async function adminTok(env) { return 'a1.' + (await hmacHex(env.SESSION_SECRET || 'dev', 'mfadmin-v1')).slice(0, 24); }
-export async function adminCookie(env) { return `mfadmin=${encodeURIComponent(await adminTok(env))}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=43200`; }
+// 管理员 cookie:用 ADMIN_SECRET 签名 + 内嵌过期(轮换 ADMIN_SECRET 即吊销;与顾客会话密钥分离)
+async function adminTok(env, exp) { return 'a1.' + exp + '.' + (await hmacHex(adminSecret(env), 'mfadmin-v1.' + exp)).slice(0, 24); }
+export async function adminCookie(env) { const exp = Date.now() + ADMIN_TTL; return `mfadmin=${encodeURIComponent(await adminTok(env, exp))}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=43200`; }
 export async function adminCookieOK(env, request) {
   const m = (request.headers.get('cookie') || '').match(/mfadmin=([^;]+)/); if (!m) return false;
-  return decodeURIComponent(m[1]) === await adminTok(env);
+  const val = decodeURIComponent(m[1]), parts = val.split('.');
+  if (parts.length !== 3 || parts[0] !== 'a1' || !/^\d+$/.test(parts[1]) || Number(parts[1]) < Date.now()) return false;
+  return val === await adminTok(env, Number(parts[1]));
 }
 export function adminOK(env, secret) {
   const want = env.ADMIN_SECRET || '';
