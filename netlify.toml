@@ -6,3 +6,9 @@
 [functions]
   directory = "netlify/functions"
   node_bundler = "esbuild"
+
+# 让前端文件每次都向服务器校验(部署后顾客立刻拿到最新版,不卡旧缓存)
+[[headers]]
+  for = "/*"
+  [headers.values]
+    cache-control = "public, max-age=0, must-revalidate"
