@@ -13,6 +13,19 @@ const CONFIG = {
 };
 const ADMIN_NAME = 'liew';   // 管理员用户名(非密钥);口令由服务器校验,不进前端代码
 const drawsForDay = d => CONFIG.DAY_DRAWS[Math.min(Math.max(d|0,1),7)-1] || 1;
+// 大马手机号校验(对齐服务器 normPhone:去 60/0 前缀后须 1xxxxxxxx)
+function myPhone(p){ let d=String(p||'').replace(/\D/g,''); if(d.startsWith('60')) d=d.slice(2); if(d.startsWith('0')) d=d.slice(1); return /^1[0-9]{8,9}$/.test(d) ? d : null; }
+// 客服联系卡(品牌抬头 + 可点电话 / WhatsApp);号码统一取自 CONFIG.WHATSAPP
+function contactHTML(onLight){
+  const wa=CONFIG.WHATSAPP, tel='+'+wa, local='0'+wa.replace(/^60/,'');
+  return `<div class="contact-box${onLight?' on-light':''}">
+    <div class="cb-brand">MFormula by natureLISH</div>
+    <div class="cb-sub">官方会员日活动 · 有问题找真人客服</div>
+    <div class="cb-row">
+      <a class="cb-tel" href="tel:${tel}">📞 ${local}</a>
+      <a class="cb-wa" href="https://wa.me/${wa}" target="_blank" rel="noopener">💬 WhatsApp</a>
+    </div></div>`;
+}
 
 // 配套(固定价) slots = 这单能带几件好礼
 const PACKAGES = [
@@ -195,6 +208,7 @@ function renderHome(){
     </div>`;}).join('');
   renderBundle();
   applyActivityState();
+  renderReturnHint();
 }
 // 返回「不能抽奖」的原因(未开始/已结束/暂停…),可抽则 null
 function homeBlock(){
@@ -217,6 +231,16 @@ function applyActivityState(){
   }
 }
 function statusModal(){ const hb=homeBlock(); if(hb) modal(hb.emoji, hb.label, hb.msg||'请稍后再来 🙏', [{label:'知道了'}]); }
+function setSpinUI(on){ const b=$('spinBtn'); if(!b) return; if(on){ b.disabled=true; b.innerHTML='🎡 抽奖中…'; } else applyActivityState(); }
+function renderReturnHint(){          // 大厅常驻:今天抽完别走,明天还有免费次数(兑现 7 天回访)
+  const el=$('returnHint'); if(!el) return;
+  const show = !S.admin && !homeBlock() && S.day>=1 && S.day<7;
+  if(!show){ el.style.display='none'; return; }
+  el.style.display='block';
+  el.innerHTML = (S.day===6)
+    ? `🎉 明天就是最后一天!<span class="rh-big">第 7 天大放送,有 <b>3</b> 次免费抽 — 记得回来!</span>`
+    : `📅 今天抽完别走宝!<span class="rh-big">明天登入还有 <b>${drawsForDay(S.day+1)}</b> 次免费抽 🎡</span>`;
+}
 
 /* ---------------- 转盘 ---------------- */
 let wheelRot = 0, spinning = false;
@@ -255,7 +279,7 @@ function spin(){
   if(homeBlock()){ statusModal(); return; }
   if(MF.p2){ spinServer(); return; }                   // 灰度:服务器版抽奖(防作弊)
   if(S.chances<=0){ noChanceModal(); return; }
-  spinning=true; S.chances--; save(); renderTop(); setDrawsLeft();
+  spinning=true; setSpinUI(true); S.chances--; save(); renderTop();
   const idx = weightedPick();
   animateTo(idx, ()=>{ spinning=false; award(idx); });
 }
@@ -264,7 +288,7 @@ $('spinBtn') && $('spinBtn').addEventListener('click', spin);
 // 服务器版:结果 + 次数都由服务器决定(清缓存刷不回、结果改不了)
 async function spinServer(retried){
   if(S.chances<=0){ noChanceModal(); return; }
-  spinning=true; renderTop();
+  spinning=true; setSpinUI(true); renderTop();
   let r; try{ r = await apiPOST('/api/spin', {}); }catch(e){ r=null; }
   if(!r || !r.ok){
     const why = r && r.reason;
@@ -272,7 +296,7 @@ async function spinServer(retried){
       const sr = await serverSession();
       if(sr && sr.ok){ spinning=false; return spinServer(true); }
     }
-    spinning=false;
+    spinning=false; setSpinUI(false);
     if(why==='nochance'){ S.chances=0; save(); renderTop(); setDrawsLeft(); noChanceModal(); }
     else if(why==='notrunning'){ if(r.status) actStatus=r.status; applyActivityState(); statusModal(); }
     else if(why==='window'){ toastModal('活动还没开始哦,7 月 1 日见 🗓️'); }
@@ -307,19 +331,32 @@ function showWinModal(key){
   const p=byKey(key); const im=wonImg(key);
   const img = im ? `<img src="assets/${im}" alt="" onerror="this.replaceWith(document.createTextNode('${p.emoji}'))">` : p.emoji;
   const scales = JSON.stringify(p.a)!==JSON.stringify(p.b);
-  // 升级诱因:选 4 Boxes → 这件升级成 b 版本(前置给顾客看)
-  const upgrade = (scales && p.type!=='ultra')
-    ? `<div class="m-upgrade">选 <b>4 Boxes</b> 配套 → 这件升级成 <b>${p.b.label}</b> ⬆️</div>` : '';
+  const canUpsell = scales && p.type!=='ultra' && S.pickPkg!=='4box';   // 还没选4盒 → 当场一键升级(峰值情绪转化)
+  let extra, btns;
+  if(canUpsell){
+    const saveLine = p.type==='disc' ? `<div class="m-upsave">等于再省 RM${(p.b.value||0)-(p.a.value||0)}!</div>` : '';
+    extra = `<div class="m-compare">
+        <div class="mc-col"><span class="mc-h">2 盒配套</span><span class="mc-v">${p.a.label}</span></div>
+        <div class="mc-arrow">→</div>
+        <div class="mc-col mc-up"><span class="mc-h">4 盒配套 ⬆️</span><span class="mc-v">${p.b.label}</span></div>
+      </div>${saveLine}`;
+    btns = [
+      {label:`✅ 我要 4 盒,这件升级`, action:()=>{ S.pickPkg='4box'; trimBundle(); save(); renderHome(); }},
+      {label:'先 2 盒就好', sub:true, action:()=>{}}];
+  } else {
+    extra = p.type==='ultra' ? '<div class="m-pill d-legend">🏆 传说大奖 · 太幸运了!</div>' : '';
+    btns = [
+      {label: S.chances>0?'再抽一次 →':'去找客服领取', action:()=>{}},
+      {label:'看我的好礼', sub:true, action:()=>{ const el=$('wonHead'); if(el) el.scrollIntoView({behavior:'smooth'}); }}];
+  }
   modalRaw(
     `<div class="m-glow"></div>
      <div class="m-kicker" style="color:#4A9C8E">🎉 恭喜!你抽中</div>
      <div class="m-emoji">${img}</div>
      <div class="m-name">${pv(p).label}</div>
-     ${p.type==='ultra'?'<div class="m-pill d-legend">🏆 传说大奖 · 太幸运了!</div>':''}
-     ${upgrade}
+     ${extra}
      <div class="m-redeem">✅ 已帮你放进「我的好礼」· 请 <b>24 小时内</b>找客服领取</div>`,
-    [{label: S.chances>0?'再抽一次 →':'去找客服领取', action:()=>{}},
-     {label:'看我的好礼', sub:true, action:()=>{ const el=$('wonHead'); if(el) el.scrollIntoView({behavior:'smooth'}); }}]);
+    btns);
 }
 
 /* ---------------- 兑换倒计时(24小时) ---------------- */
@@ -417,11 +454,13 @@ function renderBundle(){
 
 /* ---------------- 续命:下单/兑换码 ---------------- */
 function noChanceModal(){
+  const tomorrow = (S.day>=1 && S.day<7) ? drawsForDay(S.day+1) : 0;
   const btns=[];
   btns.push({label:`🎁 输入兑换码`, action:codeModal});
   btns.push({label:`🛒 去下单（+${CONFIG.ORDER_BONUS}次）`, action:()=>go('home')});
-  btns.push({label:'关闭', sub:true});
-  modal('⚡','抽奖次数用完?别等明天!', `输入兑换码、或下单 <b>+${CONFIG.ORDER_BONUS}</b> 次 —— 马上继续抽。`, btns);
+  btns.push({label: tomorrow>0?'好,明天再来':'关闭', sub:true});
+  const lead = tomorrow>0 ? `明天登入还有 <b>${tomorrow}</b> 次免费抽,记得回来!<br>` : '';
+  modal('🎡','今天的次数抽完啦', `${lead}想现在继续?输入兑换码、或下单 <b>+${CONFIG.ORDER_BONUS}</b> 次马上接着抽 🙂`, btns);
 }
 function grantOrderBonus(){ S.chances+=CONFIG.ORDER_BONUS; save(); renderTop(); }
 
@@ -461,7 +500,10 @@ async function redeemCode(raw){
 }
 
 /* ---------------- 下单 / WhatsApp ---------------- */
+let ordering=false;
 $('waBtn') && $('waBtn').addEventListener('click', async ()=>{
+  if(ordering) return; ordering=true; { const _wb=$('waBtn'); if(_wb) _wb.disabled=true; }   // 防长辈连点重复下单
+  try{
   const hadN=S.bundle.length; pruneExpired();           // 下单前再核一次:踢掉刚过期的好礼
   if(S.bundle.length!==hadN){ renderHome(); toastModal('部分好礼已过 24 小时失效,已帮你移除,确认后再下单 🙂'); return; }
   const pkg=curPkg();
@@ -478,7 +520,9 @@ $('waBtn') && $('waBtn').addEventListener('click', async ()=>{
     discVal=pr.disc; isFree=pr.free; bonusGranted=CONFIG.ORDER_BONUS;
   }
   const finalPrice = isFree ? 0 : Math.max(0, pkg.price - discVal);
-  const rewardsTxt = bundleKeys.length ? bundleKeys.map(k=>`   • ${wonLabel(k)}`).join('\n') : '   • (不带好礼,直接下单)';
+  const savedAmt = isFree ? pkg.price : discVal;
+  const rewardsTxt = bundleKeys.length ? bundleKeys.map(k=>`   • ${wonLabel(k)}`).join('\n') : '   • 暂不带好礼(可跟客服现场加抽中的)';
+  const upsellLine = (pkg.key==='2box' && bundleKeys.some(k=>{const q=byKey(k);return q && q.type!=='ultra' && JSON.stringify(q.a)!==JSON.stringify(q.b);})) ? '\n💡 升级 4 盒 → 好礼全部翻倍(可问客服)' : '';
   const payTxt = isFree ? 'RM0 — 免单 🎉' : `RM${finalPrice}${discVal?`（已减 RM${discVal}）`:''}`;
   const msg =
 `你好 MFormula 客服 👋 我要参加 Member Day 下单！
@@ -487,21 +531,24 @@ $('waBtn') && $('waBtn').addEventListener('click', async ()=>{
 📦 配套：${pkg.name} — 原价 RM${pkg.price}
 🎁 抽中带上（${bundleKeys.length}）：
 ${rewardsTxt}
-💰 应付：${payTxt}
+💰 应付：${payTxt}${savedAmt>0?`\n🎉 这单帮我省了 RM${savedAmt}`:''}${upsellLine}
 🧾 兑换码：${code}
 ━━━━━━━━━━
-请帮我确认订单,谢谢！(兑换码一次性有效 · 活动 1/7–7/7)`;
+我知道客服会先核对配套和兑换码,确认后才发货 🙏
+(兑换码一次性有效 · 活动 1/7–7/7)`;
   const url = `https://wa.me/${CONFIG.WHATSAPP}?text=${encodeURIComponent(msg)}`;
   modalRaw(
     `<div class="m-name" style="font-size:18px">确认下单</div>
-     <div class="m-text" style="margin-top:5px">复制兑换码,发送给客服即可完成</div>
+     <div class="m-text" style="margin-top:5px">点下面 → 会自动打开 WhatsApp,里面已经帮你写好了,<b>直接按发送</b> ✅</div>
      <div class="m-code-box"><div class="cap">一次性兑换码</div><div class="m-code">${code}</div></div>
-     <div class="m-text" style="text-align:left;margin-top:16px;font-weight:700;color:#5b6b73">消息预览</div>
-     <div class="wa-bubble">${msg.replace(/</g,'&lt;')}</div>`,
-    [{label:'📲 前往 WhatsApp 发送', action:()=>{ window.open(url,'_blank');
+     <div class="m-text" style="text-align:left;margin-top:16px;font-weight:700;color:#5b6b73">消息预览(已写好)</div>
+     <div class="wa-bubble">${msg.replace(/</g,'&lt;')}</div>
+     <div class="m-text" style="margin-top:8px;font-size:12px">打不开?截图这段发给客服也行 🙂</div>`,
+    [{label:'📲 打开 WhatsApp 发给客服', action:()=>{ window.open(url,'_blank');
         if(!MF.p2) grantOrderBonus();
         setTimeout(()=>modal('🎉','订单已发给客服!', bonusGranted>0?`额外 <b>+${bonusGranted}</b> 次抽奖到账 🎉`:'订单已送出 ✓', [{label:'继续抽', action:()=>go('home')}]), 400); }},
      {label:'返回继续搭配', sub:true}]);
+  } finally { ordering=false; const _wb=$('waBtn'); if(_wb) _wb.disabled=false; }
 });
 function genCode(sig, pkgKey){
   if(S.codes[sig]) return S.codes[sig];
@@ -628,10 +675,13 @@ function renderHelp(){
     <div class="help-p">想把好礼带回家 → 选个配套(2 Boxes RM358 / 4 Boxes RM716)→ 点「联系客服」把订单 + 兑换码发 WhatsApp 给客服。<b>不买也能玩、能抽。</b></div>
     <div class="help-h">大奖</div>
     <div class="help-p">转盘上有 <b>免单</b> 和 <b>999 足金</b> —— 概率超低,看得到、超难中,抽到就是天选之子 🍀。</div>
+    <div class="help-h">公平说明</div>
+    <div class="help-p">转盘中奖完全由系统<b>随机</b>抽出,<b>每个人机会都一样</b>,不会因为你是谁而改变。免单和 999 足金是<b>真奖品</b>,只是数量极少、纯凭运气 🍀。</div>
     <div class="help-h">抽奖次数(每天不同)</div>
-    <div class="help-p"><b>第 1 天 5 次</b> · 第 2–6 天每天 1 次 · <b>第 7 天 3 次</b>。用完别等 —— <b>输入兑换码</b>或<b>下单 +${CONFIG.ORDER_BONUS}</b> 立刻继续。</div>
+    <div class="help-p"><b>第 1 天 5 次</b> · 第 2–6 天每天 1 次 · <b>第 7 天 3 次</b>。今天用完了 —— <b>输入兑换码</b>或<b>下单 +${CONFIG.ORDER_BONUS}</b> 立刻继续,明天回来还有免费次数。</div>
     <div class="help-h">好礼 24 小时内兑换</div>
-    <div class="help-p">抽中的好礼会<b>倒数 24 小时</b>,请在失效前联系客服兑换,过期作废。活动 1/7–7/7。</div>`;
+    <div class="help-p">抽中的好礼会<b>倒数 24 小时</b>,请在失效前联系客服兑换,过期作废。活动 1/7–7/7。</div>
+    ${contactHTML(true)}`;
 }
 
 /* ---------------- 弹窗 ---------------- */
@@ -671,9 +721,10 @@ $('nextDayBtn').onclick=()=>{
 $('loginBtn').onclick=async ()=>{
   const name=$('loginName').value.trim(), phone=$('loginPhone').value.trim();
   if(!name){ toastModal('请填写你的名字 🙂'); return; }
-  if(!/^[0-9+\-\s]{7,}$/.test(phone)){ toastModal('电话号码好像不太对,检查一下 🙂'); return; }
+  const isAdmin = name.toLowerCase()===ADMIN_NAME && MF.api;
+  if(!isAdmin && !myPhone(phone)){ toastModal('请填 01 开头的大马手机号,例如 012-345 6789(座机不行哦)🙂'); return; }
   S.name=name; S.phone=phone; S.loggedIn=true; S.admin=false;
-  if(name.toLowerCase()===ADMIN_NAME && MF.api){          // 管理员:口令交服务器校验(拿 cookie)
+  if(isAdmin){          // 管理员:口令交服务器校验(拿 cookie)
     const a = await apiPOST('/api/admin-login', {pass: phone.replace(/\D/g,'')});
     if(a && a.ok) S.admin=true;
   }
@@ -721,5 +772,6 @@ function tickRedeem(){
 setInterval(tickRedeem, 1000);
 
 /* ---------------- 启动 ---------------- */
+{ const lc=$('loginContact'); if(lc) lc.innerHTML=contactHTML(false); }
 if(S.loggedIn) go(S.admin?'admin':'home'); else go('login');
 bootstrapServer();   // 拉取服务器共用配置(状态/权重/兑换码);连不上自动退回本机

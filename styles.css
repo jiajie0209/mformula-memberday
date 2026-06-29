@@ -59,14 +59,14 @@ html,body{height:100%;background:#d7d0c0;font-family:"PingFang SC","PingFang TC"
 .login-title::before{content:"";width:6px;height:36px;border-radius:4px;background:linear-gradient(180deg,#E2B655,#bf8e2c);box-shadow:0 3px 8px rgba(213,162,60,.4);}
 .login-title h1{font-size:38px;font-weight:900;color:var(--navy);letter-spacing:.05em;position:relative;}
 .login-title h1::after{content:"";position:absolute;left:0;bottom:-7px;width:46px;height:4px;border-radius:3px;background:linear-gradient(90deg,#D5A23C,#E2B655);}
-.login-sub{font-size:13px;color:var(--muted);margin:20px 0 22px;line-height:1.5;}
+.login-sub{font-size:14px;color:var(--muted);margin:20px 0 22px;line-height:1.55;}
 .lf{display:block;margin-bottom:16px;}
 .lf span{display:block;font-size:12px;font-weight:600;color:#5b6b73;margin-bottom:7px;}
-.lf input{width:100%;height:50px;border-radius:13px;border:1.5px solid var(--line);background:#fff;padding:0 16px;font-size:15px;color:var(--ink);outline:none;transition:border-color .15s,box-shadow .15s;}
+.lf input{width:100%;height:50px;border-radius:13px;border:1.5px solid var(--line);background:#fff;padding:0 16px;font-size:16px;color:var(--ink);outline:none;transition:border-color .15s,box-shadow .15s;}
 .lf input:focus{border-color:var(--gold);box-shadow:0 0 0 4px rgba(213,162,60,.14);}
 #loginBtn{height:54px;border:none;width:100%;border-radius:14px;background:linear-gradient(180deg,#E2B655 0%,#D5A23C 55%,#bf8e2c 100%);color:#3a2a07;font-size:16px;font-weight:800;letter-spacing:.04em;box-shadow:0 12px 24px rgba(213,162,60,.4),inset 0 1px 0 rgba(255,255,255,.5);margin-top:6px;}
 #loginBtn:active{transform:translateY(2px);box-shadow:0 5px 12px rgba(213,162,60,.4);}
-.login-note{text-align:center;font-size:11px;color:var(--soft);margin-top:16px;}
+.login-note{text-align:center;font-size:12.5px;color:var(--soft);margin-top:16px;}
 
 /* ---------- 大厅区块 ---------- */
 .hero{margin:14px 16px 0;position:relative;border-radius:20px;overflow:hidden;background:linear-gradient(160deg,#103f4d 0%,#0a2c37 100%);padding:22px 20px 20px;box-shadow:0 16px 34px rgba(10,44,55,.28);}
@@ -74,7 +74,7 @@ html,body{height:100%;background:#d7d0c0;font-family:"PingFang SC","PingFang TC"
 .hero-kicker{display:inline-block;background:var(--gold);color:#3a2a07;font-size:11px;font-weight:800;letter-spacing:.1em;padding:4px 10px;border-radius:6px;}
 .hero-t{color:#fff;font-size:21px;font-weight:800;line-height:1.4;margin-top:13px;}
 .hero-t b{color:var(--gold-ll);font-weight:800;}
-.hero-s{color:#b8cdca;font-size:12.5px;line-height:1.65;margin-top:8px;}
+.hero-s{color:#b8cdca;font-size:14px;line-height:1.6;margin-top:8px;}
 
 .social-proof{margin:12px 16px 0;background:#fff;border:1px solid #ffe2cf;border-radius:13px;padding:11px 14px;display:flex;align-items:center;gap:9px;box-shadow:0 6px 14px rgba(192,57,43,.08);font-size:12.5px;color:#3a4a52;}
 .social-proof::before{content:"🔥";font-size:17px;}
@@ -102,7 +102,7 @@ html,body{height:100%;background:#d7d0c0;font-family:"PingFang SC","PingFang TC"
 .pkg-box span{font-size:30px;}
 .pkg-name{font-size:14px;font-weight:800;color:var(--navy);margin-top:9px;}
 .pkg-price{font-size:20px;font-weight:800;color:var(--gold);margin-top:2px;}
-.pkg-slots{font-size:10.5px;color:var(--muted);margin-top:4px;line-height:1.5;}
+.pkg-slots{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.5;}
 .pkg-tick{margin-top:10px;font-size:11px;font-weight:700;color:var(--navy);background:rgba(14,57,71,.05);border-radius:8px;padding:6px 0;}
 .pkg.sel .pkg-tick{background:rgba(213,162,60,.14);color:var(--gold-d);}
 
@@ -167,7 +167,7 @@ html,body{height:100%;background:#d7d0c0;font-family:"PingFang SC","PingFang TC"
 
 .cta{display:flex;align-items:center;justify-content:center;gap:9px;width:calc(100% - 32px);margin:16px 16px 0;height:58px;border:none;border-radius:16px;background:linear-gradient(180deg,#55b3a3,#4A9C8E 55%,#3d8a7d);color:#fff;font-size:16.5px;font-weight:800;letter-spacing:.02em;cursor:pointer;box-shadow:0 14px 28px rgba(74,156,142,.4),inset 0 1px 0 rgba(255,255,255,.35);animation:mfPulse 2.4s infinite;}
 .cta:active{transform:translateY(2px);box-shadow:0 6px 14px rgba(74,156,142,.4);}
-.cta-note{text-align:center;font-size:11px;color:var(--soft);margin-top:9px;}
+.cta-note{text-align:center;font-size:12.5px;color:var(--soft);margin-top:9px;}
 .ghost{display:block;width:100%;background:none;border:none;color:var(--soft);font-size:12.5px;font-weight:600;margin-top:14px;text-decoration:underline;}
 
 /* ---------- 敲击游戏(沉浸) ---------- */
@@ -218,7 +218,7 @@ html,body{height:100%;background:#d7d0c0;font-family:"PingFang SC","PingFang TC"
 
 /* ---------- 帮助 ---------- */
 .help-h{font-size:15px;font-weight:800;margin:16px 0 6px;color:var(--navy);}
-.help-p{font-size:13px;color:var(--ink);line-height:1.7;}
+.help-p{font-size:15px;color:var(--ink);line-height:1.8;}
 .help-p b{color:var(--gold-d);}
 table.help-t{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:6px;border-radius:10px;overflow:hidden;}
 table.help-t td{border:1px solid var(--line);padding:8px 10px;background:#fff;}
@@ -539,7 +539,7 @@ table.help-t tr td:first-child{font-weight:700;background:#faf6ec;white-space:no
 #wonHead{display:block;margin:20px 16px 0;}
 .won-title{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:15px;font-weight:800;color:var(--ink);}
 .won-title .lh-pill{font-size:11px;font-weight:700;color:var(--green);background:rgba(74,156,142,.12);padding:3px 9px;border-radius:20px;}
-.won-guide{font-size:12.5px;color:#5b6b73;line-height:1.55;margin-top:7px;}
+.won-guide{font-size:13.5px;color:#5b6b73;line-height:1.6;margin-top:7px;}
 .won-guide b{color:var(--navy);}
 .won-cd{display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;margin-top:11px;background:#fff4e0;border:1.5px solid #f0cf90;border-radius:14px;padding:11px 12px;box-shadow:0 6px 14px rgba(192,57,43,.08);}
 .won-cd .wc-l{font-size:13px;font-weight:700;color:#9a5a12;}
@@ -549,3 +549,32 @@ table.help-t tr td:first-child{font-weight:700;background:#faf6ec;white-space:no
 /* 中奖弹窗:升级诱因 */
 .m-upgrade{margin-top:11px;background:linear-gradient(180deg,#fbf3e0,#f6e7c0);border:1.5px solid #e2c069;border-radius:13px;padding:11px 13px;font-size:14px;font-weight:700;color:#8a5a12;line-height:1.5;}
 .m-upgrade b{color:var(--gold-d);}
+
+/* ---------- 客服联系(登入页 / 帮助页) ---------- */
+.login-contact{margin:18px auto 0;animation:mfRise .6s .16s ease both;position:relative;z-index:1;}
+.contact-box{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:13px 14px;text-align:center;}
+.contact-box.on-light{background:#fbf3e0;border-color:#f0d9a8;margin-top:18px;}
+.cb-brand{font-size:13px;font-weight:800;color:#fff;letter-spacing:.02em;}
+.contact-box.on-light .cb-brand{color:var(--navy);}
+.cb-sub{font-size:12px;color:#b8cdca;margin-top:3px;}
+.contact-box.on-light .cb-sub{color:var(--muted);}
+.cb-row{margin-top:10px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;}
+.cb-row a{flex:1 1 auto;min-width:128px;display:inline-flex;align-items:center;justify-content:center;gap:5px;text-decoration:none;font-size:14px;font-weight:800;padding:11px 12px;border-radius:11px;}
+.cb-row a.cb-tel{background:linear-gradient(180deg,#E2B655,#D5A23C);color:#3a2a07;box-shadow:0 4px 10px rgba(213,162,60,.3);}
+.cb-row a.cb-wa{background:#25D366;color:#fff;box-shadow:0 4px 10px rgba(37,211,102,.3);}
+.cb-row a:active{transform:translateY(1px);}
+
+/* ---------- 回访提示(明天还有 X 次) ---------- */
+.return-hint{margin:14px 16px 0;background:linear-gradient(180deg,#114457,#0d3645);border:1px solid rgba(213,162,60,.45);border-radius:14px;padding:12px 14px;color:#eafaf6;font-size:14px;font-weight:700;text-align:center;line-height:1.55;box-shadow:0 8px 18px rgba(8,30,40,.25);}
+.return-hint b{color:var(--gold-ll);font-size:18px;}
+.return-hint .rh-big{display:block;margin-top:4px;color:var(--gold-ll);font-weight:800;}
+
+/* ---------- 中奖弹窗:2盒/4盒一键对比升级 ---------- */
+.m-compare{margin-top:13px;display:flex;align-items:stretch;justify-content:center;gap:8px;}
+.m-compare .mc-col{flex:1;background:#fff;border:1.5px solid var(--line);border-radius:12px;padding:9px 6px;display:flex;flex-direction:column;gap:3px;justify-content:center;}
+.m-compare .mc-col.mc-up{border-color:var(--gold);background:linear-gradient(180deg,#fbf3e0,#f6e7c0);box-shadow:0 6px 14px rgba(213,162,60,.22);}
+.m-compare .mc-h{font-size:11px;font-weight:800;color:var(--muted);}
+.m-compare .mc-col.mc-up .mc-h{color:var(--gold-d);}
+.m-compare .mc-v{font-size:14px;font-weight:900;color:var(--navy);line-height:1.2;}
+.m-compare .mc-arrow{display:flex;align-items:center;color:var(--gold-d);font-size:18px;font-weight:900;}
+.m-upsave{margin-top:9px;font-size:14px;font-weight:800;color:#c0392b;}

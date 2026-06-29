@@ -1,0 +1,16 @@
+# 图片等静态资源:一年强缓存(回访秒开、省流量;要更新就改文件名)
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# 代码/页面:每次校验,部署后顾客立刻拿到最新版
+/index.html
+  Cache-Control: public, max-age=0, must-revalidate
+/app.js
+  Cache-Control: public, max-age=0, must-revalidate
+/styles.css
+  Cache-Control: public, max-age=0, must-revalidate
+
+# 安全
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
