@@ -550,20 +550,6 @@ table.help-t tr td:first-child{font-weight:700;background:#faf6ec;white-space:no
 .m-upgrade{margin-top:11px;background:linear-gradient(180deg,#fbf3e0,#f6e7c0);border:1.5px solid #e2c069;border-radius:13px;padding:11px 13px;font-size:14px;font-weight:700;color:#8a5a12;line-height:1.5;}
 .m-upgrade b{color:var(--gold-d);}
 
-/* ---------- 客服联系(登入页 / 帮助页) ---------- */
-.login-contact{margin:18px auto 0;animation:mfRise .6s .16s ease both;position:relative;z-index:1;}
-.contact-box{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:13px 14px;text-align:center;}
-.contact-box.on-light{background:#fbf3e0;border-color:#f0d9a8;margin-top:18px;}
-.cb-brand{font-size:13px;font-weight:800;color:#fff;letter-spacing:.02em;}
-.contact-box.on-light .cb-brand{color:var(--navy);}
-.cb-sub{font-size:12px;color:#b8cdca;margin-top:3px;}
-.contact-box.on-light .cb-sub{color:var(--muted);}
-.cb-row{margin-top:10px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;}
-.cb-row a{flex:1 1 auto;min-width:128px;display:inline-flex;align-items:center;justify-content:center;gap:5px;text-decoration:none;font-size:14px;font-weight:800;padding:11px 12px;border-radius:11px;}
-.cb-row a.cb-tel{background:linear-gradient(180deg,#E2B655,#D5A23C);color:#3a2a07;box-shadow:0 4px 10px rgba(213,162,60,.3);}
-.cb-row a.cb-wa{background:#25D366;color:#fff;box-shadow:0 4px 10px rgba(37,211,102,.3);}
-.cb-row a:active{transform:translateY(1px);}
-
 /* ---------- 回访提示(明天还有 X 次) ---------- */
 .return-hint{margin:14px 16px 0;background:linear-gradient(180deg,#114457,#0d3645);border:1px solid rgba(213,162,60,.45);border-radius:14px;padding:12px 14px;color:#eafaf6;font-size:14px;font-weight:700;text-align:center;line-height:1.55;box-shadow:0 8px 18px rgba(8,30,40,.25);}
 .return-hint b{color:var(--gold-ll);font-size:18px;}

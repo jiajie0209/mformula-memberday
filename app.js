@@ -15,17 +15,6 @@ const ADMIN_NAME = 'liew';   // 管理员用户名(非密钥);口令由服务器
 const drawsForDay = d => CONFIG.DAY_DRAWS[Math.min(Math.max(d|0,1),7)-1] || 1;
 // 大马手机号校验(对齐服务器 normPhone:去 60/0 前缀后须 1xxxxxxxx)
 function myPhone(p){ let d=String(p||'').replace(/\D/g,''); if(d.startsWith('60')) d=d.slice(2); if(d.startsWith('0')) d=d.slice(1); return /^1[0-9]{8,9}$/.test(d) ? d : null; }
-// 客服联系卡(品牌抬头 + 可点电话 / WhatsApp);号码统一取自 CONFIG.WHATSAPP
-function contactHTML(onLight){
-  const wa=CONFIG.WHATSAPP, tel='+'+wa, local='0'+wa.replace(/^60/,'');
-  return `<div class="contact-box${onLight?' on-light':''}">
-    <div class="cb-brand">MFormula by natureLISH</div>
-    <div class="cb-sub">官方会员日活动 · 有问题找真人客服</div>
-    <div class="cb-row">
-      <a class="cb-tel" href="tel:${tel}">📞 ${local}</a>
-      <a class="cb-wa" href="https://wa.me/${wa}" target="_blank" rel="noopener">💬 WhatsApp</a>
-    </div></div>`;
-}
 
 // 配套(固定价) slots = 这单能带几件好礼
 const PACKAGES = [
@@ -680,8 +669,7 @@ function renderHelp(){
     <div class="help-h">抽奖次数(每天不同)</div>
     <div class="help-p"><b>第 1 天 5 次</b> · 第 2–6 天每天 1 次 · <b>第 7 天 3 次</b>。今天用完了 —— <b>输入兑换码</b>或<b>下单 +${CONFIG.ORDER_BONUS}</b> 立刻继续,明天回来还有免费次数。</div>
     <div class="help-h">好礼 24 小时内兑换</div>
-    <div class="help-p">抽中的好礼会<b>倒数 24 小时</b>,请在失效前联系客服兑换,过期作废。活动 1/7–7/7。</div>
-    ${contactHTML(true)}`;
+    <div class="help-p">抽中的好礼会<b>倒数 24 小时</b>,请在失效前联系客服兑换,过期作废。活动 1/7–7/7。</div>`;
 }
 
 /* ---------------- 弹窗 ---------------- */
@@ -772,6 +760,5 @@ function tickRedeem(){
 setInterval(tickRedeem, 1000);
 
 /* ---------------- 启动 ---------------- */
-{ const lc=$('loginContact'); if(lc) lc.innerHTML=contactHTML(false); }
 if(S.loggedIn) go(S.admin?'admin':'home'); else go('login');
 bootstrapServer();   // 拉取服务器共用配置(状态/权重/兑换码);连不上自动退回本机
