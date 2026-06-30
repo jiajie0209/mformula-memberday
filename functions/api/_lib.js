@@ -23,7 +23,7 @@ export const DEFAULT_WEIGHTS = { v5: 22, v10: 14, v30: 5, v50: 1, g5: 18, g10: 1
 const WEIGHT_KEYS = Object.keys(DEFAULT_WEIGHTS);
 export const STATUSES = ['running', 'paused', 'updating', 'ended', 'closed'];
 export const isStatus = s => STATUSES.includes(s);
-export const BUILTIN_CODES = { MEMBERDAY: 5, MFORMULA: 3, LIEW888: 10 };
+export const BUILTIN_CODES = {};   // 不再内置永久码;全部由管理员后台自行增删(服务器为准)
 export const WHEEL_KEYS = ['v5', 'v10', 'v30', 'v50', 'g5', 'g10', 'g15', 'tumbler', 'duffle', 'free', 'gold'];
 export const ULTRA = new Set(['free', 'gold']);
 export const STOCK_DEFAULT = { tumbler: 30, duffle: 12, free: 3, gold: 1 };

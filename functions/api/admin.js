@@ -29,6 +29,8 @@ export async function onRequestPost({ request, env }) {
       if (!c || !(n > 0)) return json({ ok: false, error: 'bad code' }); cfg.codes = { ...cfg.codes, [c]: n }; mutated = true;
     } else if (action === 'delCode') {
       const c = String(body.code || '').trim().toUpperCase(); const nc = { ...cfg.codes }; delete nc[c]; cfg.codes = nc; mutated = true;
+    } else if (action === 'clearCodes') {
+      cfg.codes = {}; mutated = true;
     } else if (action === 'setActivityStart') {
       const d = String(body.date || ''); if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return json({ ok: false, error: 'bad date' }); cfg.activityStart = d; mutated = true;
     } else if (action === 'setServerDraws') {
