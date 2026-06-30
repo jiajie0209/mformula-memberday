@@ -16,6 +16,12 @@ export async function onRequestPost({ request, env }) {
       rec.status = 'redeemed'; rec.redeemedAt = Date.now(); await saveRedemption(env, rec);
       return json({ ok: true, rec });
     }
+    if (action === 'resetData') {   // 清空运营/测试数据(保留 config:概率/状态/兑换码/开始日)
+      for (const t of ['members', 'stats', 'prize_counts', 'winners', 'stock', 'sentinels', 'redemptions']) {
+        await env.DB.prepare('DELETE FROM ' + t).run();
+      }
+      return json({ ok: true, reset: true });
+    }
 
     const cfg = await loadConfig(env); let mutated = false;
     if (action === 'get') {
