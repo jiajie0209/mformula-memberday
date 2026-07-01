@@ -570,6 +570,10 @@ function renderAdmin(){
     <div class="code-add"><input id="csCode" placeholder="顾客的码 如 MD-2B-123456" autocapitalize="characters"><button id="csBtn">核对</button></div>
     <div id="csResult"></div>
     <div class="adm-note">输入顾客发来的下单码 → 核对配套/好礼/价格(以服务器记录为准,防改 WhatsApp 文字)。</div></div>` : '';
+  const findCard = live ? `<div class="adm-card"><div class="adm-h">🔍 查顾客(忘了抽中什么?输电话查)</div>
+    <div class="code-add"><input id="findPhone" placeholder="顾客电话 如 0123456789" inputmode="tel"><button id="findBtn">查</button></div>
+    <div id="findResult"></div>
+    <div class="adm-note">输入顾客电话 → 看他抽中了什么、有没有下单(只读,不影响活动)。</div></div>` : '';
   const leadsCard = live ? `<div class="adm-card"><div class="adm-h">📋 待跟进名单(玩过没下单)</div>
     <button id="leadsBtn" class="lead-btn">⬇️ 导出 CSV(姓名 + 电话 + 抽中好礼)</button>
     <div class="adm-note">导出「玩过但还没下单」的顾客 → WhatsApp 群发提醒(配合 24 小时好礼快过期,转化更高)。</div></div>` : '';
@@ -594,7 +598,7 @@ function renderAdmin(){
     <div class="act-btns">${stOpts.map(([k,lbl])=>`<button class="act-set ${actStatus===k?'on':''}" data-act="${k}">${lbl}</button>`).join('')}</div>
     <div class="adm-note">非「进行中」时,用户会看到对应提示且不能抽奖(已抽中的好礼仍可在 24 小时内兑换)。${MF.api?'✅ <b>已连服务器:改了对所有顾客即时生效</b>。':'⚠️ 未连服务器,只存本机。'}</div></div>`;
   const topNote = live ? '✅ 下面是<b>真实数据</b>(服务器实时统计)。' : '⚠️ 下面人数/排行是 <b>demo 模拟数据</b>(未连服务器)。';
-  $('adminBody').innerHTML=`<div class="adm-note top">${topNote}</div>${actCard}${stats}${prizeCard}${lb}${csCard}${leadsCard}${weightsCard}${codes}<button class="ghost" id="admLogout">退出登录</button>`;
+  $('adminBody').innerHTML=`<div class="adm-note top">${topNote}</div>${actCard}${stats}${prizeCard}${lb}${csCard}${findCard}${leadsCard}${weightsCard}${codes}<button class="ghost" id="admLogout">退出登录</button>`;
   const add=$('addCodeBtn'); if(add) add.onclick=async ()=>{
     const c=($('newCode').value||'').trim().toUpperCase(), n=parseInt($('newCodeN').value,10);
     if(!c||!(n>0)){ toastModal('填写码和次数 🙂'); return; }
@@ -606,6 +610,7 @@ function renderAdmin(){
   $('adminBody').querySelectorAll('[data-wkey]').forEach(inp=>{ inp.onchange=async ()=>{ const v=parseFloat(inp.value); weights[inp.dataset.wkey]=(isFinite(v)&&v>=0)?v:0; saveWeights(); if(MF.api) await adminWrite({action:'setWeights',weights}); renderAdmin(); }; });
   $('adminBody').querySelectorAll('[data-act]').forEach(b=>b.onclick=async ()=>{ actStatus=b.dataset.act; saveStatus(); if(MF.api) await adminWrite({action:'setStatus',status:actStatus}); renderAdmin(); });
   const csBtn=$('csBtn'); if(csBtn) csBtn.onclick=csVerify;
+  const fb=$('findBtn'); if(fb) fb.onclick=findMember;
   const lb2=$('leadsBtn'); if(lb2) lb2.onclick=exportLeads;
   const lo=$('admLogout'); if(lo) lo.onclick=logout;
   if(live){ loadAdminStats(); if(!codesLoaded) loadAdminCodes(); }
@@ -669,6 +674,25 @@ async function csVerify(){                  // 客服核对下单兑换码
     <div class="cs-row">应付:<b>${rec.free?'RM0(免单)':'RM'+rec.final}</b></div>
     ${rec.status!=='redeemed'?'<button id="csRedeemBtn" class="act-set" style="margin-top:8px">标记已发货</button>':''}</div>`;
   const rb=$('csRedeemBtn'); if(rb) rb.onclick=async ()=>{ const rr=await adminWrite({action:'csRedeem',code}); if(rr&&rr.ok) csVerify(); };
+}
+async function findMember(){                // 客服查顾客:电话 → 抽了什么奖 / 有没有下单
+  const p=($('findPhone').value||'').trim(); const box=$('findResult'); if(!box) return;
+  if(!p){ box.innerHTML='<div class="cs-bad">请输入电话</div>'; return; }
+  box.innerHTML='<div class="adm-empty">查询中…</div>';
+  const r=await adminWrite({action:'findPhone', phone:p});
+  if(!r || !r.ok){ box.innerHTML='<div class="cs-bad">服务器没回应,再试一次</div>'; return; }
+  if(!r.found || !r.found.length){ box.innerHTML='<div class="cs-bad">找不到这个电话(可能还没玩过,或号码不对)</div>'; return; }
+  box.innerHTML = r.found.map(m=>{
+    const prizes = (m.won||[]).length
+      ? m.won.map(k=>{ const q=byKey(k); return q ? (q.sa===q.sb?q.sa:`${q.sa}/${q.sb}`) : k; }).join('、')
+      : '(还没抽中)';
+    const ordered = (m.orderCount||0)>0;
+    return `<div class="cs-card">
+      <div class="cs-row">👤 <b>${m.name||''}</b>(0${m.phone})</div>
+      <div class="cs-row">🎁 抽中:${prizes}</div>
+      <div class="cs-row">🛒 ${ordered?'<span class="cs-used">已下单</span>':'<span class="cs-ok">还没下单</span>'}</div>
+    </div>`;
+  }).join('');
 }
 
 /* ---------------- 帮助 ---------------- */

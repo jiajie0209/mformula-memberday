@@ -1,5 +1,5 @@
 // POST /api/admin — 管理员写/读(cookie 或 body.secret 授权)
-import { loadConfig, saveConfig, adminOK, adminCookieOK, clampWeights, isStatus, loadStats, getRedemption, saveRedemption, listLeads, json } from './_lib.js';
+import { loadConfig, saveConfig, adminOK, adminCookieOK, clampWeights, isStatus, loadStats, getRedemption, saveRedemption, listLeads, normPhone, json } from './_lib.js';
 
 export async function onRequestPost({ request, env }) {
   try {
@@ -21,6 +21,18 @@ export async function onRequestPost({ request, env }) {
         await env.DB.prepare('DELETE FROM ' + t).run();
       }
       return json({ ok: true, reset: true });
+    }
+    if (action === 'findPhone') {   // 客服查:电话 → 抽了什么奖 / 有没有下单(只读,不改任何东西)
+      const np = normPhone(body.phone || '');
+      if (!np) return json({ ok: true, found: [] });
+      const rows = (await env.DB.prepare('SELECT data FROM members WHERE data LIKE ?').bind('%"phone":"' + np + '"%').all()).results || [];
+      const found = [];
+      for (const row of rows) {
+        let m; try { m = JSON.parse(row.data); } catch (e) { continue; }
+        if (m.phone !== np) continue;
+        found.push({ name: m.name, phone: m.phone, won: m.won || [], pkg: m.pkg, orderCount: m.orderCount || 0 });
+      }
+      return json({ ok: true, found });
     }
 
     const cfg = await loadConfig(env); let mutated = false;
