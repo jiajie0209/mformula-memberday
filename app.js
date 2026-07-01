@@ -561,6 +561,9 @@ function renderAdmin(){
     <div class="adm-stat"><div class="n" id="stP">${live?'…':dP}</div><div class="l">参与人数</div></div>
     <div class="adm-stat"><div class="n" id="stS">${live?'…':dS}</div><div class="l">总抽奖次数</div></div>
     <div class="adm-stat"><div class="n" id="stO">${live?'…':dO}</div><div class="l">下单数</div></div></div>`;
+  const prizeCard=`<div class="adm-card"><div class="adm-h">🎁 各奖品中奖统计(多少人抽到)</div>
+    <div id="prizeStats">${live?'<div class="adm-empty">加载中…</div>':'<div class="adm-empty">连服务器后显示</div>'}</div>
+    <div class="adm-note">每人每个奖最多中一次,所以「X 人」= 有多少人抽到这个奖。</div></div>`;
   const lbDemo = ADMIN_LB.map((p,i)=>`<div class="adm-lb"><span class="r ${i<3?'top':''}">${i+1}</span><span class="nm">${p.name}</span><span class="v">中奖 ${p.n} 件</span></div>`).join('');
   const lb=`<div class="adm-card"><div class="adm-h">🏆 谁最强(中奖最多)</div><div id="admLb">${live?'<div class="adm-empty">加载中…</div>':lbDemo}</div></div>`;
   const csCard = live ? `<div class="adm-card"><div class="adm-h">🔎 客服核对兑换码</div>
@@ -591,7 +594,7 @@ function renderAdmin(){
     <div class="act-btns">${stOpts.map(([k,lbl])=>`<button class="act-set ${actStatus===k?'on':''}" data-act="${k}">${lbl}</button>`).join('')}</div>
     <div class="adm-note">非「进行中」时,用户会看到对应提示且不能抽奖(已抽中的好礼仍可在 24 小时内兑换)。${MF.api?'✅ <b>已连服务器:改了对所有顾客即时生效</b>。':'⚠️ 未连服务器,只存本机。'}</div></div>`;
   const topNote = live ? '✅ 下面是<b>真实数据</b>(服务器实时统计)。' : '⚠️ 下面人数/排行是 <b>demo 模拟数据</b>(未连服务器)。';
-  $('adminBody').innerHTML=`<div class="adm-note top">${topNote}</div>${actCard}${stats}${lb}${csCard}${leadsCard}${weightsCard}${codes}<button class="ghost" id="admLogout">退出登录</button>`;
+  $('adminBody').innerHTML=`<div class="adm-note top">${topNote}</div>${actCard}${stats}${prizeCard}${lb}${csCard}${leadsCard}${weightsCard}${codes}<button class="ghost" id="admLogout">退出登录</button>`;
   const add=$('addCodeBtn'); if(add) add.onclick=async ()=>{
     const c=($('newCode').value||'').trim().toUpperCase(), n=parseInt($('newCodeN').value,10);
     if(!c||!(n>0)){ toastModal('填写码和次数 🙂'); return; }
@@ -643,6 +646,9 @@ async function loadAdminStats(){           // 拉真实统计 + 排行榜
   if(el) el.innerHTML = winners.length
     ? winners.map((w,i)=>`<div class="adm-lb"><span class="r ${i<3?'top':''}">${i+1}</span><span class="nm">${w.name}</span><span class="v">中奖 ${w.n} 件</span></div>`).join('')
     : '<div class="adm-empty">还没有人中奖</div>';
+  const pc = st.prizeCounts || {};
+  const ps = $('prizeStats');
+  if(ps) ps.innerHTML = WHEEL.map(p=>{ const n=pc[p.key]||0; const nm=(p.sa===p.sb)?p.sa:`${p.sa}/${p.sb}`; return `<div class="pz-row"><span class="pz-nm">${p.emoji} ${nm}</span><span class="pz-n">${n} 人</span></div>`; }).join('');
 }
 async function csVerify(){                  // 客服核对下单兑换码
   const code=($('csCode').value||'').trim().toUpperCase();

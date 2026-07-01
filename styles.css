@@ -254,6 +254,10 @@ table.help-t tr td:first-child{font-weight:700;background:#faf6ec;white-space:no
 .code-add input#newCodeN{flex:0 0 64px;}
 .code-add button{flex:0 0 auto;background:var(--navy);color:#fff;border:none;border-radius:10px;padding:0 14px;font-weight:800;font-size:13px;}
 .adm-empty{font-size:12px;color:var(--muted);}
+.pz-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px;}
+.pz-row:last-child{border-bottom:none;}
+.pz-row .pz-nm{font-weight:600;color:var(--ink);}
+.pz-row .pz-n{font-weight:800;color:var(--navy);white-space:nowrap;}
 
 /* ====== MFormula 大转盘 — Brand-forward editorial (final) ======
    Machined navy/gold watch bezel, framed product-photo chips,
