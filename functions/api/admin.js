@@ -30,7 +30,7 @@ export async function onRequestPost({ request, env }) {
       for (const row of rows) {
         let m; try { m = JSON.parse(row.data); } catch (e) { continue; }
         if (m.phone !== np) continue;
-        found.push({ name: m.name, phone: m.phone, won: m.won || [], pkg: m.pkg, orderCount: m.orderCount || 0 });
+        found.push({ name: m.name, phone: m.phone, won: m.won || [], wonAt: m.wonAt || {}, pkg: m.pkg, orderCount: m.orderCount || 0 });
       }
       return json({ ok: true, found });
     }

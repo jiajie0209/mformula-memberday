@@ -258,6 +258,12 @@ table.help-t tr td:first-child{font-weight:700;background:#faf6ec;white-space:no
 .pz-row:last-child{border-bottom:none;}
 .pz-row .pz-nm{font-weight:600;color:var(--ink);}
 .pz-row .pz-n{font-weight:800;color:var(--navy);white-space:nowrap;}
+.fm-pkg{margin-top:9px;background:#fbf7ec;border:1px solid #eadfc4;border-radius:10px;padding:9px 12px;}
+.fm-h{font-size:14px;font-weight:800;color:var(--navy);}
+.fm-h span{font-size:12px;font-weight:600;color:var(--gold-d);margin-left:4px;}
+.fm-list{font-size:14px;line-height:1.75;color:var(--ink);margin-top:5px;}
+.fm-copy{margin-top:11px;width:100%;background:var(--navy);color:#fff;border:none;border-radius:11px;padding:12px;font-size:14.5px;font-weight:800;}
+.fm-copy:active{transform:translateY(1px);}
 
 /* ====== MFormula 大转盘 — Brand-forward editorial (final) ======
    Machined navy/gold watch bezel, framed product-photo chips,

@@ -675,25 +675,43 @@ async function csVerify(){                  // 客服核对下单兑换码
     ${rec.status!=='redeemed'?'<button id="csRedeemBtn" class="act-set" style="margin-top:8px">标记已发货</button>':''}</div>`;
   const rb=$('csRedeemBtn'); if(rb) rb.onclick=async ()=>{ const rr=await adminWrite({action:'csRedeem',code}); if(rr&&rr.ok) csVerify(); };
 }
-async function findMember(){                // 客服查顾客:电话 → 抽了什么奖 / 有没有下单
+async function findMember(){                // 客服查顾客:电话 → 抽中什么(2盒/4盒清单,一键复制给顾客)
   const p=($('findPhone').value||'').trim(); const box=$('findResult'); if(!box) return;
   if(!p){ box.innerHTML='<div class="cs-bad">请输入电话</div>'; return; }
   box.innerHTML='<div class="adm-empty">查询中…</div>';
   const r=await adminWrite({action:'findPhone', phone:p});
   if(!r || !r.ok){ box.innerHTML='<div class="cs-bad">服务器没回应,再试一次</div>'; return; }
   if(!r.found || !r.found.length){ box.innerHTML='<div class="cs-bad">找不到这个电话(可能还没玩过,或号码不对)</div>'; return; }
-  box.innerHTML = r.found.map(m=>{
-    const prizes = (m.won||[]).length
-      ? m.won.map(k=>{ const q=byKey(k); return q ? (q.sa===q.sb?q.sa:`${q.sa}/${q.sb}`) : k; }).join('、')
-      : '(还没抽中)';
-    const ordered = (m.orderCount||0)>0;
-    return `<div class="cs-card">
-      <div class="cs-row">👤 <b>${m.name||''}</b>(0${m.phone})</div>
-      <div class="cs-row">🎁 抽中:${prizes}</div>
-      <div class="cs-row">🛒 ${ordered?'<span class="cs-used">已下单</span>':'<span class="cs-ok">还没下单</span>'}</div>
-    </div>`;
+  const ORDER=['g5','g10','g15','tumbler','duffle','free','gold','v5','v10','v30','v50'];   // 好礼在前,券在后
+  const line=(k,is4)=>{ const q=byKey(k); if(!q) return '🎁'+k;
+    if(q.type==='disc') return '🎁扣 '+(is4?q.sb:q.sa);
+    let s=is4?q.sb:q.sa; if(k==='g15'&&is4) s='30包（1盒）'; return '🎁'+s; };
+  box.innerHTML = r.found.map((m)=>{
+    const wonAt=m.wonAt||{}, REDEEM=CONFIG.REDEEM_MS;
+    const isExp=k=>{ const t=wonAt[k]; return !!t && (t+REDEEM<=Date.now()); };
+    const valid=ORDER.filter(k=>(m.won||[]).includes(k) && !isExp(k));
+    const expN=(m.won||[]).filter(isExp).length;
+    const ordered=(m.orderCount||0)>0;
+    const head=`<div class="cs-row">👤 <b>${m.name||''}</b>(0${m.phone}) · ${ordered?'<span class="cs-used">已下单</span>':'<span class="cs-ok">还没下单</span>'}</div>`;
+    if(!valid.length) return `<div class="cs-card">${head}<div class="cs-row">🎁 ${(m.won||[]).length?'抽中的好礼都超过 24 小时,已失效 ⌛':'还没抽中任何好礼'}</div></div>`;
+    const n=valid.length;
+    const h2=n>2?`${n}选2`:`${n} 件全带`, h3=n>3?`${n}选3`:`${n} 件全带`;
+    const b2=valid.map(k=>line(k,false)).join('\n'), b4=valid.map(k=>line(k,true)).join('\n');
+    const expNote=expN?`\n\n（另有 ${expN} 个好礼已过 24 小时失效）`:'';
+    const msg=`你好 ${m.name||''} 👋 你在 MFormula 会员日抽中的好礼:\n\n【2盒配套 RM358】(${h2})\n${b2}\n\n【4盒配套 RM716】(${h3})\n${b4}${expNote}\n\n想要哪个配套?告诉我们帮你安排 🙂`;
+    return `<div class="cs-card">${head}
+      <div class="fm-pkg"><div class="fm-h">2盒配套 RM358 <span>(${h2})</span></div><div class="fm-list">${b2.replace(/\n/g,'<br>')}</div></div>
+      <div class="fm-pkg"><div class="fm-h">4盒配套 RM716 <span>(${h3})</span></div><div class="fm-list">${b4.replace(/\n/g,'<br>')}</div></div>
+      ${expN?`<div class="cs-row" style="color:#b03b3b;font-size:12px;margin-top:6px">⌛ 另有 ${expN} 个好礼已过 24 小时失效</div>`:''}
+      <button class="fm-copy" data-copy="${encodeURIComponent(msg)}">📋 复制给顾客</button></div>`;
   }).join('');
+  box.querySelectorAll('[data-copy]').forEach(btn=>btn.onclick=()=>{
+    const t=decodeURIComponent(btn.dataset.copy), done=()=>toastModal('已复制 ✅ 去 WhatsApp 贴给顾客就行');
+    if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(done).catch(()=>fmFallbackCopy(t,done));
+    else fmFallbackCopy(t,done);
+  });
 }
+function fmFallbackCopy(t,done){ const ta=document.createElement('textarea'); ta.value=t; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.focus(); ta.select(); try{document.execCommand('copy'); done();}catch(e){toastModal('复制失败,长按选取 🙏');} ta.remove(); }
 
 /* ---------------- 帮助 ---------------- */
 function renderHelp(){
