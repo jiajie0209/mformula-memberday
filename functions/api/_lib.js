@@ -60,6 +60,8 @@ export async function loadConfig(env) {
   cfg.redeemMs = Number.isFinite(cfg.redeemMs) ? cfg.redeemMs : 86400000;
   cfg.activityStart = (typeof cfg.activityStart === 'string') ? cfg.activityStart : '2026-07-01';
   cfg.serverDraws = !!cfg.serverDraws;
+  cfg.msgOrder = (typeof cfg.msgOrder === 'string') ? cfg.msgOrder : '';       // 查顾客·正常消息模板(空=用前端默认)
+  cfg.msgRecover = (typeof cfg.msgRecover === 'string') ? cfg.msgRecover : ''; // 查顾客·过期恢复消息模板
   return cfg;
 }
 export async function saveConfig(env, cfg) {

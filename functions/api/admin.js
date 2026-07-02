@@ -51,7 +51,7 @@ export async function onRequestPost({ request, env }) {
 
     const cfg = await loadConfig(env); let mutated = false;
     if (action === 'get') {
-      return json({ ok: true, status: cfg.status, weights: cfg.weights, codes: cfg.codes, rev: cfg.rev, activityStart: cfg.activityStart, dayDraws: cfg.dayDraws });
+      return json({ ok: true, status: cfg.status, weights: cfg.weights, codes: cfg.codes, rev: cfg.rev, activityStart: cfg.activityStart, dayDraws: cfg.dayDraws, msgOrder: cfg.msgOrder, msgRecover: cfg.msgRecover });
     } else if (action === 'setStatus') {
       const s = String(body.status || ''); if (!isStatus(s)) return json({ ok: false, error: 'bad status' }); cfg.status = s; mutated = true;
     } else if (action === 'setWeights') {
@@ -67,6 +67,10 @@ export async function onRequestPost({ request, env }) {
       const d = String(body.date || ''); if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return json({ ok: false, error: 'bad date' }); cfg.activityStart = d; mutated = true;
     } else if (action === 'setServerDraws') {
       cfg.serverDraws = !!body.on; mutated = true;
+    } else if (action === 'setMsg') {
+      const t = String(body.text || '');
+      if (body.which === 'recover') cfg.msgRecover = t; else if (body.which === 'order') cfg.msgOrder = t; else return json({ ok: false, error: 'bad which' });
+      mutated = true;
     } else {
       return json({ ok: false, error: 'unknown action' });
     }

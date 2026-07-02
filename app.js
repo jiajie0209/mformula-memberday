@@ -574,6 +574,14 @@ function renderAdmin(){
     <div class="code-add"><input id="findPhone" placeholder="顾客电话 如 0123456789" inputmode="tel"><button id="findBtn">查</button></div>
     <div id="findResult"></div>
     <div class="adm-note">输入顾客电话 → 看他抽中了什么、有没有下单(只读,不影响活动)。</div></div>` : '';
+  const msgCard = live ? `<div class="adm-card"><div class="adm-h">✏️ 查顾客·消息模板(可自己改)</div>
+    <div class="adm-note" style="margin:0 0 4px">标签:<b>{name}</b>姓名 · <b>{phone}</b>电话 · <b>{list2}</b>/<b>{list3}</b>奖品清单 · <b>{pick2}</b>/<b>{pick3}</b>可选几样。改完按保存,对所有客服生效。</div>
+    <div class="msg-lbl">🆘 补救消息(好礼已过期时)</div>
+    <textarea id="msgRecover" class="msg-ta" rows="12"></textarea>
+    <div class="msg-lbl">🎁 正常消息(未过期时)</div>
+    <textarea id="msgOrder" class="msg-ta" rows="8"></textarea>
+    <button id="msgSaveBtn" class="lead-btn" style="margin-top:10px">💾 保存消息模板</button>
+    <button id="msgResetBtn" class="ghost" style="margin-top:8px;width:100%;text-align:center">恢复默认模板</button></div>` : '';
   const leadsCard = live ? `<div class="adm-card"><div class="adm-h">📋 待跟进名单(玩过没下单)</div>
     <button id="leadsBtn" class="lead-btn">⬇️ 导出 CSV(姓名 + 电话 + 抽中好礼)</button>
     <div class="adm-note">导出「玩过但还没下单」的顾客 → WhatsApp 群发提醒(配合 24 小时好礼快过期,转化更高)。</div></div>` : '';
@@ -598,7 +606,7 @@ function renderAdmin(){
     <div class="act-btns">${stOpts.map(([k,lbl])=>`<button class="act-set ${actStatus===k?'on':''}" data-act="${k}">${lbl}</button>`).join('')}</div>
     <div class="adm-note">非「进行中」时,用户会看到对应提示且不能抽奖(已抽中的好礼仍可在 24 小时内兑换)。${MF.api?'✅ <b>已连服务器:改了对所有顾客即时生效</b>。':'⚠️ 未连服务器,只存本机。'}</div></div>`;
   const topNote = live ? '✅ 下面是<b>真实数据</b>(服务器实时统计)。' : '⚠️ 下面人数/排行是 <b>demo 模拟数据</b>(未连服务器)。';
-  $('adminBody').innerHTML=`<div class="adm-note top">${topNote}</div>${actCard}${stats}${prizeCard}${lb}${csCard}${findCard}${leadsCard}${weightsCard}${codes}<button class="ghost" id="admLogout">退出登录</button>`;
+  $('adminBody').innerHTML=`<div class="adm-note top">${topNote}</div>${actCard}${stats}${prizeCard}${lb}${csCard}${findCard}${msgCard}${leadsCard}${weightsCard}${codes}<button class="ghost" id="admLogout">退出登录</button>`;
   const add=$('addCodeBtn'); if(add) add.onclick=async ()=>{
     const c=($('newCode').value||'').trim().toUpperCase(), n=parseInt($('newCodeN').value,10);
     if(!c||!(n>0)){ toastModal('填写码和次数 🙂'); return; }
@@ -611,13 +619,17 @@ function renderAdmin(){
   $('adminBody').querySelectorAll('[data-act]').forEach(b=>b.onclick=async ()=>{ actStatus=b.dataset.act; saveStatus(); if(MF.api) await adminWrite({action:'setStatus',status:actStatus}); renderAdmin(); });
   const csBtn=$('csBtn'); if(csBtn) csBtn.onclick=csVerify;
   const fb=$('findBtn'); if(fb) fb.onclick=findMember;
+  if($('msgRecover')) $('msgRecover').value = MSG_RECOVER;
+  if($('msgOrder')) $('msgOrder').value = MSG_ORDER;
+  const msb=$('msgSaveBtn'); if(msb) msb.onclick=saveMsgTpls;
+  const mrb=$('msgResetBtn'); if(mrb) mrb.onclick=()=>{ MSG_RECOVER=DEF_MSG_RECOVER; MSG_ORDER=DEF_MSG_ORDER; if($('msgRecover'))$('msgRecover').value=MSG_RECOVER; if($('msgOrder'))$('msgOrder').value=MSG_ORDER; toastModal('已恢复默认(记得按保存 💾)'); };
   const lb2=$('leadsBtn'); if(lb2) lb2.onclick=exportLeads;
   const lo=$('admLogout'); if(lo) lo.onclick=logout;
   if(live){ loadAdminStats(); if(!codesLoaded) loadAdminCodes(); }
 }
 async function loadAdminCodes(){          // 从服务器拉真实兑换码列表(后台显示服务器为准)
   const r = await adminWrite({action:'get'});
-  if(r && r.ok){ serverCodes = r.codes || {}; codesLoaded = true; renderAdmin(); }
+  if(r && r.ok){ serverCodes = r.codes || {}; if(r.msgRecover) MSG_RECOVER=r.msgRecover; if(r.msgOrder) MSG_ORDER=r.msgOrder; codesLoaded = true; renderAdmin(); }
 }
 async function exportLeads(){              // 导出「玩过没下单」名单 CSV
   const btn=$('leadsBtn'); if(btn){ btn.disabled=true; btn.textContent='导出中…'; }
@@ -675,6 +687,10 @@ async function csVerify(){                  // 客服核对下单兑换码
     ${rec.status!=='redeemed'?'<button id="csRedeemBtn" class="act-set" style="margin-top:8px">标记已发货</button>':''}</div>`;
   const rb=$('csRedeemBtn'); if(rb) rb.onclick=async ()=>{ const rr=await adminWrite({action:'csRedeem',code}); if(rr&&rr.ok) csVerify(); };
 }
+/* ---------- 查顾客·消息模板(可后台自改;{name}{phone}{list2}{list3}{pick2}{pick3}) ---------- */
+const DEF_MSG_RECOVER = `你好👋 {name}\n\n📱 ({phone}) · 会员日抽中奖励记录\n\n⚠️ 你的奖励已经超过 24 小时，原本已经失效了。\n\n不过今天我们可以破例帮你恢复一次，只要今天完成兑换，还来得及🙏\n\n〈2盒 RM358〉可任选 {pick2}样\n\n{list2}\n\n〈4盒 RM716〉可任选 {pick3}样\n\n{list3}\n\n⏰ 今天是最后一天可以补救恢复奖励，过了今天就真的不能再恢复了。\n\n👉 如果要保留你的礼物，今天回复我「2盒」或「4盒」，我马上帮你安排兑换。 💪`;
+const DEF_MSG_ORDER = `你好👋 {name}\n\n📱 ({phone}) · 会员日抽中好礼\n\n〈2盒 RM358〉可任选 {pick2}样\n\n{list2}\n\n〈4盒 RM716〉可任选 {pick3}样\n\n{list3}\n\n👉 想要哪个配套?今天回复我「2盒」或「4盒」，我马上帮你安排兑换 🙂`;
+let MSG_RECOVER = DEF_MSG_RECOVER, MSG_ORDER = DEF_MSG_ORDER;
 async function findMember(){                // 客服查顾客:电话 → 抽中什么(2盒/4盒清单,一键复制给顾客)
   const p=($('findPhone').value||'').trim(); const box=$('findResult'); if(!box) return;
   if(!p){ box.innerHTML='<div class="cs-bad">请输入电话</div>'; return; }
@@ -682,35 +698,38 @@ async function findMember(){                // 客服查顾客:电话 → 抽中
   const r=await adminWrite({action:'findPhone', phone:p});
   if(!r || !r.ok){ box.innerHTML='<div class="cs-bad">服务器没回应,再试一次</div>'; return; }
   if(!r.found || !r.found.length){ box.innerHTML='<div class="cs-bad">找不到这个电话(可能还没玩过,或号码不对)</div>'; return; }
-  const ORDER=['g5','g10','g15','tumbler','duffle','free','gold','v5','v10','v30','v50'];   // 好礼在前,券在后
-  const line=(k,is4)=>{ const q=byKey(k); if(!q) return '🎁'+k;
-    if(q.type==='disc') return '🎁扣 '+(is4?q.sb:q.sa);
-    let s=is4?q.sb:q.sa; if(k==='g15'&&is4) s='30包（1盒）'; return '🎁'+s; };
+  const ORDER=['g5','g10','g15','tumbler','duffle','free','gold','v5','v10','v30','v50'];
+  const line=(k,is4)=>{ const q=byKey(k); if(!q) return '🎁 '+k;
+    if(q.type==='disc') return '🎁 RM'+((is4?q.b.value:q.a.value)||0)+' Voucher';
+    if(k==='tumbler') return '🎁 World Cup Tumbler';
+    if(k==='duffle') return '🎁 World Cup Duffle Bag';
+    if(k==='free') return '🎁 整单免单';
+    if(k==='gold') return '🎁 999 足金';
+    if(k==='g15'&&is4) return '🎁 30包 MFormula（1盒）';
+    return '🎁 '+(is4?q.sb:q.sa)+' MFormula'; };
   box.innerHTML = r.found.map((m)=>{
     const wonAt=m.wonAt||{}, REDEEM=CONFIG.REDEEM_MS;
     const isExp=k=>{ const t=wonAt[k]; return !!t && (t+REDEEM<=Date.now()); };
-    const won=ORDER.filter(k=>(m.won||[]).includes(k));       // 全部抽中的(含过期)
-    const valid=won.filter(k=>!isExp(k));                     // 还没过期的
+    const won=ORDER.filter(k=>(m.won||[]).includes(k));
+    const valid=won.filter(k=>!isExp(k));
     const ordered=(m.orderCount||0)>0;
     const head=`<div class="cs-row">👤 <b>${m.name||''}</b>(0${m.phone}) · ${ordered?'<span class="cs-used">已下单</span>':'<span class="cs-ok">还没下单</span>'}</div>`;
     if(!won.length) return `<div class="cs-card">${head}<div class="cs-row">🎁 还没抽中任何好礼</div></div>`;
-    const allExpired = valid.length===0;                      // 全过期 → 仍显示,给客服私下跟进
+    const allExpired = valid.length===0;
     const showKs = allExpired ? won : valid;
     const expExtra = (!allExpired && valid.length<won.length) ? (won.length-valid.length) : 0;
-    const n=showKs.length;
-    const h2=n>2?`${n}选2`:`${n} 件全带`, h3=n>3?`${n}选3`:`${n} 件全带`;
-    const b2=showKs.map(k=>line(k,false)).join('\n'), b4=showKs.map(k=>line(k,true)).join('\n');
+    const n=showKs.length, pick2=Math.min(n,2), pick3=Math.min(n,3);
+    const list2=showKs.map(k=>line(k,false)).join('\n'), list3=showKs.map(k=>line(k,true)).join('\n');
+    const tpl=allExpired?MSG_RECOVER:MSG_ORDER;
+    const msg=tpl.replace(/{name}/g,m.name||'').replace(/{phone}/g,'0'+m.phone).replace(/{list2}/g,list2).replace(/{list3}/g,list3).replace(/{pick2}/g,pick2).replace(/{pick3}/g,pick3);
     const banner = allExpired
-      ? `<div class="fm-banner">⌛ 这些好礼都已过 24 小时(不能再正常下单)—— 仅供你参考,可私下找他 🙂</div>`
+      ? `<div class="fm-banner">⌛ 好礼已过 24 小时 —— 下面是「破例恢复」消息,复制发给他即可(仍可私下跟进)。</div>`
       : (expExtra ? `<div class="cs-row" style="color:#b03b3b;font-size:12.5px;margin-top:6px">⌛ 另有 ${expExtra} 个好礼已过 24 小时失效</div>` : '');
-    const msg = allExpired
-      ? `【${m.name||''}(0${m.phone})· 会员日抽中记录】\n※ 好礼都已过 24 小时,如要补发请私下安排\n\n〈当时选 2盒 RM358〉\n${b2}\n\n〈当时选 4盒 RM716〉\n${b4}`
-      : `你好 ${m.name||''} 👋 你在 MFormula 会员日抽中的好礼:\n\n【2盒配套 RM358】(${h2})\n${b2}\n\n【4盒配套 RM716】(${h3})\n${b4}${expExtra?`\n\n（另有 ${expExtra} 个好礼已过 24 小时失效）`:''}\n\n想要哪个配套?告诉我们帮你安排 🙂`;
     return `<div class="cs-card">${head}
       ${banner}
-      <div class="fm-pkg"><div class="fm-h">2盒配套 RM358 <span>(${h2})</span></div><div class="fm-list">${b2.replace(/\n/g,'<br>')}</div></div>
-      <div class="fm-pkg"><div class="fm-h">4盒配套 RM716 <span>(${h3})</span></div><div class="fm-list">${b4.replace(/\n/g,'<br>')}</div></div>
-      <button class="fm-copy" data-copy="${encodeURIComponent(msg)}">📋 ${allExpired?'复制记录(私下跟进)':'复制给顾客'}</button></div>`;
+      <div class="fm-pkg"><div class="fm-h">2盒 RM358 <span>(可选${pick2}样)</span></div><div class="fm-list">${list2.replace(/\n/g,'<br>')}</div></div>
+      <div class="fm-pkg"><div class="fm-h">4盒 RM716 <span>(可选${pick3}样)</span></div><div class="fm-list">${list3.replace(/\n/g,'<br>')}</div></div>
+      <button class="fm-copy" data-copy="${encodeURIComponent(msg)}">📋 ${allExpired?'复制「恢复」消息':'复制给顾客'}</button></div>`;
   }).join('');
   box.querySelectorAll('[data-copy]').forEach(btn=>btn.onclick=()=>{
     const t=decodeURIComponent(btn.dataset.copy), done=()=>toastModal('已复制 ✅ 去 WhatsApp 贴给顾客就行');
@@ -719,6 +738,13 @@ async function findMember(){                // 客服查顾客:电话 → 抽中
   });
 }
 function fmFallbackCopy(t,done){ const ta=document.createElement('textarea'); ta.value=t; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.focus(); ta.select(); try{document.execCommand('copy'); done();}catch(e){toastModal('复制失败,长按选取 🙏');} ta.remove(); }
+async function saveMsgTpls(){
+  const rec=(($('msgRecover')&&$('msgRecover').value)||'').trim(), ord=(($('msgOrder')&&$('msgOrder').value)||'').trim();
+  MSG_RECOVER=rec||DEF_MSG_RECOVER; MSG_ORDER=ord||DEF_MSG_ORDER;
+  const a=await adminWrite({action:'setMsg', which:'recover', text:MSG_RECOVER});
+  const b=await adminWrite({action:'setMsg', which:'order', text:MSG_ORDER});
+  toastModal((a&&b)?'消息模板已保存 ✅ 对所有客服生效':'保存失败,再试一次 ⚠️');
+}
 
 /* ---------------- 帮助 ---------------- */
 function renderHelp(){
