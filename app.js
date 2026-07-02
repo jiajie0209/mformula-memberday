@@ -710,26 +710,25 @@ async function findMember(){                // 客服查顾客:电话 → 抽中
   box.innerHTML = r.found.map((m)=>{
     const wonAt=m.wonAt||{}, REDEEM=CONFIG.REDEEM_MS;
     const isExp=k=>{ const t=wonAt[k]; return !!t && (t+REDEEM<=Date.now()); };
-    const won=ORDER.filter(k=>(m.won||[]).includes(k));
-    const valid=won.filter(k=>!isExp(k));
+    const won=ORDER.filter(k=>(m.won||[]).includes(k));   // 全部抽中的(含过期)—— 都要显示
     const ordered=(m.orderCount||0)>0;
     const head=`<div class="cs-row">👤 <b>${m.name||''}</b>(0${m.phone}) · ${ordered?'<span class="cs-used">已下单</span>':'<span class="cs-ok">还没下单</span>'}</div>`;
     if(!won.length) return `<div class="cs-card">${head}<div class="cs-row">🎁 还没抽中任何好礼</div></div>`;
-    const allExpired = valid.length===0;
-    const showKs = allExpired ? won : valid;
-    const expExtra = (!allExpired && valid.length<won.length) ? (won.length-valid.length) : 0;
-    const n=showKs.length, pick2=Math.min(n,2), pick3=Math.min(n,3);
-    const list2=showKs.map(k=>line(k,false)).join('\n'), list3=showKs.map(k=>line(k,true)).join('\n');
-    const tpl=allExpired?MSG_RECOVER:MSG_ORDER;
+    const anyExpired = won.some(isExp);
+    const n=won.length, pick2=Math.min(n,2), pick3=Math.min(n,3);
+    const list2=won.map(k=>line(k,false)).join('\n'), list3=won.map(k=>line(k,true)).join('\n');   // 消息清单(全部,不标过期)
+    const tag=k=>isExp(k)?' <span class="fm-exp">⌛已过期</span>':'';                                // 显示清单标过期
+    const disp2=won.map(k=>line(k,false)+tag(k)).join('<br>'), disp3=won.map(k=>line(k,true)+tag(k)).join('<br>');
+    const tpl=anyExpired?MSG_RECOVER:MSG_ORDER;
     const msg=tpl.replace(/{name}/g,m.name||'').replace(/{phone}/g,'0'+m.phone).replace(/{list2}/g,list2).replace(/{list3}/g,list3).replace(/{pick2}/g,pick2).replace(/{pick3}/g,pick3);
-    const banner = allExpired
-      ? `<div class="fm-banner">⌛ 好礼已过 24 小时 —— 下面是「破例恢复」消息,复制发给他即可(仍可私下跟进)。</div>`
-      : (expExtra ? `<div class="cs-row" style="color:#b03b3b;font-size:12.5px;margin-top:6px">⌛ 另有 ${expExtra} 个好礼已过 24 小时失效</div>` : '');
+    const banner = anyExpired
+      ? `<div class="fm-banner">⌛ 有好礼已过 24 小时 —— 复制的是「破例恢复」消息(下面标 ⌛已过期 的就是过期那几个,可一起帮他恢复)。</div>`
+      : '';
     return `<div class="cs-card">${head}
       ${banner}
-      <div class="fm-pkg"><div class="fm-h">2盒 RM358 <span>(可选${pick2}样)</span></div><div class="fm-list">${list2.replace(/\n/g,'<br>')}</div></div>
-      <div class="fm-pkg"><div class="fm-h">4盒 RM716 <span>(可选${pick3}样)</span></div><div class="fm-list">${list3.replace(/\n/g,'<br>')}</div></div>
-      <button class="fm-copy" data-copy="${encodeURIComponent(msg)}">📋 ${allExpired?'复制「恢复」消息':'复制给顾客'}</button></div>`;
+      <div class="fm-pkg"><div class="fm-h">2盒 RM358 <span>(可选${pick2}样)</span></div><div class="fm-list">${disp2}</div></div>
+      <div class="fm-pkg"><div class="fm-h">4盒 RM716 <span>(可选${pick3}样)</span></div><div class="fm-list">${disp3}</div></div>
+      <button class="fm-copy" data-copy="${encodeURIComponent(msg)}">📋 ${anyExpired?'复制「恢复」消息':'复制给顾客'}</button></div>`;
   }).join('');
   box.querySelectorAll('[data-copy]').forEach(btn=>btn.onclick=()=>{
     const t=decodeURIComponent(btn.dataset.copy), done=()=>toastModal('已复制 ✅ 去 WhatsApp 贴给顾客就行');
