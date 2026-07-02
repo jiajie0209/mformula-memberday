@@ -34,6 +34,20 @@ export async function onRequestPost({ request, env }) {
       }
       return json({ ok: true, found });
     }
+    if (action === 'delMember') {   // 删顾客(电话):清测试/重复/刷号 —— 连带参加人数 -1
+      const np = normPhone(body.phone || '');
+      if (!np) return json({ ok: false, error: 'bad phone' });
+      const rows = (await env.DB.prepare('SELECT id,data FROM members WHERE data LIKE ?').bind('%"phone":"' + np + '"%').all()).results || [];
+      let n = 0;
+      for (const row of rows) {
+        let m; try { m = JSON.parse(row.data); } catch (e) { continue; }
+        if (m.phone !== np) continue;
+        const r = await env.DB.prepare('DELETE FROM members WHERE id=?').bind(row.id).run();
+        n += (r.meta && r.meta.changes) || 0;
+      }
+      if (n > 0) await env.DB.prepare('UPDATE stats SET participants = max(0, participants - ?) WHERE id=1').bind(n).run();
+      return json({ ok: true, deleted: n });
+    }
 
     const cfg = await loadConfig(env); let mutated = false;
     if (action === 'get') {

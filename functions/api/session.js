@@ -8,13 +8,19 @@ export async function onRequestPost({ request, env }) {
     if (!id) return json({ ok: false, reason: 'badphone' });
     const cfg = await loadConfig(env);
     const { day, todayKey } = dayInfo(cfg);
-    const baseToday = (day >= 1 && day <= 7) ? cfg.dayDraws[day - 1] : 0;
     let isNew = false;
     const member = await casMember(env, id, (cur) => {
       isNew = !cur;
       const m = cur || freshMember(id, body.name, body.phone);
       m.lastSeen = Date.now();
-      if (!m.days[todayKey]) m.days[todayKey] = { granted: baseToday, used: 0 };
+      if (!m.days[todayKey]) {
+        let grant = 0;
+        if (day >= 1 && day <= 7) {
+          const firstEver = Object.keys(m.days).length === 0;   // 从没记录过任何一天 = 新顾客第一次登入
+          grant = firstEver ? cfg.dayDraws[0] : (day === 7 ? cfg.dayDraws[6] : 1);   // 新客第一天=5,活动第7天=3,平常回访=1
+        }
+        m.days[todayKey] = { granted: grant, used: 0 };
+      }
       if (body.pkg === '2box' || body.pkg === '4box') m.pkg = body.pkg;
       return m;
     });
