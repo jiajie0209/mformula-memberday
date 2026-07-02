@@ -689,21 +689,28 @@ async function findMember(){                // 客服查顾客:电话 → 抽中
   box.innerHTML = r.found.map((m)=>{
     const wonAt=m.wonAt||{}, REDEEM=CONFIG.REDEEM_MS;
     const isExp=k=>{ const t=wonAt[k]; return !!t && (t+REDEEM<=Date.now()); };
-    const valid=ORDER.filter(k=>(m.won||[]).includes(k) && !isExp(k));
-    const expN=(m.won||[]).filter(isExp).length;
+    const won=ORDER.filter(k=>(m.won||[]).includes(k));       // 全部抽中的(含过期)
+    const valid=won.filter(k=>!isExp(k));                     // 还没过期的
     const ordered=(m.orderCount||0)>0;
     const head=`<div class="cs-row">👤 <b>${m.name||''}</b>(0${m.phone}) · ${ordered?'<span class="cs-used">已下单</span>':'<span class="cs-ok">还没下单</span>'}</div>`;
-    if(!valid.length) return `<div class="cs-card">${head}<div class="cs-row">🎁 ${(m.won||[]).length?'抽中的好礼都超过 24 小时,已失效 ⌛':'还没抽中任何好礼'}</div></div>`;
-    const n=valid.length;
+    if(!won.length) return `<div class="cs-card">${head}<div class="cs-row">🎁 还没抽中任何好礼</div></div>`;
+    const allExpired = valid.length===0;                      // 全过期 → 仍显示,给客服私下跟进
+    const showKs = allExpired ? won : valid;
+    const expExtra = (!allExpired && valid.length<won.length) ? (won.length-valid.length) : 0;
+    const n=showKs.length;
     const h2=n>2?`${n}选2`:`${n} 件全带`, h3=n>3?`${n}选3`:`${n} 件全带`;
-    const b2=valid.map(k=>line(k,false)).join('\n'), b4=valid.map(k=>line(k,true)).join('\n');
-    const expNote=expN?`\n\n（另有 ${expN} 个好礼已过 24 小时失效）`:'';
-    const msg=`你好 ${m.name||''} 👋 你在 MFormula 会员日抽中的好礼:\n\n【2盒配套 RM358】(${h2})\n${b2}\n\n【4盒配套 RM716】(${h3})\n${b4}${expNote}\n\n想要哪个配套?告诉我们帮你安排 🙂`;
+    const b2=showKs.map(k=>line(k,false)).join('\n'), b4=showKs.map(k=>line(k,true)).join('\n');
+    const banner = allExpired
+      ? `<div class="fm-banner">⌛ 这些好礼都已过 24 小时(不能再正常下单)—— 仅供你参考,可私下找他 🙂</div>`
+      : (expExtra ? `<div class="cs-row" style="color:#b03b3b;font-size:12.5px;margin-top:6px">⌛ 另有 ${expExtra} 个好礼已过 24 小时失效</div>` : '');
+    const msg = allExpired
+      ? `【${m.name||''}(0${m.phone})· 会员日抽中记录】\n※ 好礼都已过 24 小时,如要补发请私下安排\n\n〈当时选 2盒 RM358〉\n${b2}\n\n〈当时选 4盒 RM716〉\n${b4}`
+      : `你好 ${m.name||''} 👋 你在 MFormula 会员日抽中的好礼:\n\n【2盒配套 RM358】(${h2})\n${b2}\n\n【4盒配套 RM716】(${h3})\n${b4}${expExtra?`\n\n（另有 ${expExtra} 个好礼已过 24 小时失效）`:''}\n\n想要哪个配套?告诉我们帮你安排 🙂`;
     return `<div class="cs-card">${head}
+      ${banner}
       <div class="fm-pkg"><div class="fm-h">2盒配套 RM358 <span>(${h2})</span></div><div class="fm-list">${b2.replace(/\n/g,'<br>')}</div></div>
       <div class="fm-pkg"><div class="fm-h">4盒配套 RM716 <span>(${h3})</span></div><div class="fm-list">${b4.replace(/\n/g,'<br>')}</div></div>
-      ${expN?`<div class="cs-row" style="color:#b03b3b;font-size:12px;margin-top:6px">⌛ 另有 ${expN} 个好礼已过 24 小时失效</div>`:''}
-      <button class="fm-copy" data-copy="${encodeURIComponent(msg)}">📋 复制给顾客</button></div>`;
+      <button class="fm-copy" data-copy="${encodeURIComponent(msg)}">📋 ${allExpired?'复制记录(私下跟进)':'复制给顾客'}</button></div>`;
   }).join('');
   box.querySelectorAll('[data-copy]').forEach(btn=>btn.onclick=()=>{
     const t=decodeURIComponent(btn.dataset.copy), done=()=>toastModal('已复制 ✅ 去 WhatsApp 贴给顾客就行');
