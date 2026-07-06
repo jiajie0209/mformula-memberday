@@ -36,6 +36,22 @@ html,body{height:100%;background:#d7d0c0;font-family:"PingFang SC","PingFang TC"
 .cd-seg.cd-sp b{color:#ff8a5c;}
 #nextDayBtn{margin-left:auto;background:rgba(255,255,255,.14);color:#fff;border:none;padding:5px 10px;border-radius:9px;font-size:11px;font-weight:700;}
 #nextDayBtn:active{transform:scale(.96);}
+/* 活动倒数:顶部条数字 + 最后24小时红色催单高亮 */
+#endCountdown{font-variant-numeric:tabular-nums;}
+.cd-lbl{color:#cfe0dc;font-weight:600;}
+#countdownBar.cd-urgent{background:linear-gradient(95deg,#8a2a17,#b23a1e);}
+#countdownBar.cd-urgent .cd-seg b,#countdownBar.cd-urgent .cd-lbl{color:#ffe0cf;}
+/* 活动倒数:登入画面横幅(深色玻璃 + 金色大数字) */
+.login-countdown{position:relative;z-index:1;text-align:center;margin:0 0 20px;padding:13px 18px;border-radius:16px;
+  background:linear-gradient(100deg,rgba(21,80,99,.6),rgba(14,57,71,.6));border:1px solid rgba(240,197,107,.4);
+  box-shadow:0 12px 28px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.08);animation:mfRise .6s .04s ease both;}
+.lcd-label{font-size:12px;font-weight:700;color:#cfe0dc;letter-spacing:.03em;}
+.lcd-time{margin-top:5px;font-size:29px;font-weight:900;color:var(--gold-ll);line-height:1.05;letter-spacing:.02em;
+  font-variant-numeric:tabular-nums;text-shadow:0 3px 12px rgba(240,197,107,.22);}
+.login-countdown.lcd-urgent{border-color:rgba(255,138,92,.7);animation:cdPulse 1.5s ease-in-out infinite;}
+.login-countdown.lcd-urgent .lcd-time{color:#ff9a6a;text-shadow:0 3px 14px rgba(255,120,80,.4);}
+.login-countdown.lcd-ended .lcd-time{color:#cfe0dc;font-size:22px;}
+@keyframes cdPulse{0%,100%{box-shadow:0 12px 28px rgba(0,0,0,.28);}50%{box-shadow:0 12px 34px rgba(255,120,80,.32);}}
 
 #main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;}
 .screen{display:none;animation:mfRise .35s ease both;}

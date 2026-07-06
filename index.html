@@ -23,7 +23,7 @@
   </header>
 
   <div id="countdownBar">
-    <span class="cd-seg">⏳ 还剩 <b id="endCountdown">7</b> 天</span>
+    <span class="cd-seg"><span class="cd-lbl" id="cdLbl">⏳ 距结束</span> <b id="endCountdown">—</b></span>
     <span class="cd-seg cd-sp">🔥 <b id="spCount">92</b> 人已参加</span>
     <button id="nextDayBtn">下一天</button>
   </div>
@@ -33,6 +33,10 @@
     <!-- ============ 登入 ============ -->
     <section class="screen active" id="screen-login">
       <div class="login-logo"><img src="assets/logo-white.png" alt="MFormula by natureLISH"></div>
+      <div class="login-countdown" id="loginCountdown">
+        <div class="lcd-label" id="loginCdLabel">⏳ 会员日倒数 · 距活动结束</div>
+        <div class="lcd-time" id="loginCdTime">—</div>
+      </div>
       <div class="login-card">
         <div class="login-badge">★ 老顾客专属</div>
         <div class="login-title"><h1>会员登入</h1></div>
