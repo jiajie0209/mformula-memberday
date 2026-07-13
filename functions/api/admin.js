@@ -74,14 +74,18 @@ export async function onRequestPost({ request, env }) {
       const camp = await getCampaign(env);
       const julyCamp = { id: JK, title: camp.title || '会员日 · 七月大转盘', theme: 'wheel', start: camp.start || '2026-07-01', end: camp.end || '2026-07-07' };
       let archived = !!(await getArchive(env, JK));
+      const memRow = await env.DB.prepare('SELECT COUNT(*) AS n FROM members').first();
+      const memCount = (memRow && memRow.n) || 0;
+      const st = await loadStats(env);
       let rolled = 0, branch;
-      if (!archived) {
-        const memRow = await env.DB.prepare('SELECT COUNT(*) AS n FROM members').first();
-        const memCount = (memRow && memRow.n) || 0;
-        const st = await loadStats(env);
-        if (memCount === 0 && (st.participants || 0) === 0) { branch = 'empty'; }   // 没数据 → 只登记
-        else { await archiveCampaign(env, julyCamp); rolled = await rollupCustomers(env, julyCamp); await resetWorkingTables(env); archived = true; branch = 'archived-now'; }
-      } else { branch = 'already-archived'; }
+      if (!archived && memCount === 0 && (st.participants || 0) === 0) {
+        branch = 'empty';                                                    // 真没数据 → 只登记
+      } else {
+        if (!archived) { await archiveCampaign(env, julyCamp); archived = true; }   // 存档(只做一次,不零覆盖)
+        rolled = await rollupCustomers(env, julyCamp);                       // 幂等:补完任何没滚进档案的顾客(可安全重跑)
+        await resetWorkingTables(env);                                       // 幂等:清空(已空则无操作)
+        branch = 'migrated';
+      }
       const cfg = await loadConfig(env);   // 7月的设置原样存进登记条目(完整快照,别只靠 archive)
       const rec = { id: 'MMD070726', title: julyCamp.title, theme: 'wheel', status: 'ended', start: julyCamp.start, end: julyCamp.end,
         config: cfg, archiveId: JK, historyKey: JK, createdAt: Date.now(), updatedAt: Date.now() };
