@@ -169,6 +169,7 @@ function go(name){
   if(name==='home') renderHome();
   if(name==='help') renderHelp();
   if(name==='admin') renderAdmin();
+  if(name==='campaigns') renderCampaigns();
 }
 document.addEventListener('click', e=>{
   const g=e.target.closest('[data-go]'); if(g){ go(g.dataset.go); return; }
@@ -581,6 +582,72 @@ function genCode(sig, pkgKey){
 $('codeBar') && ($('codeBar').onclick=codeModal);
 
 /* ---------------- 超级权限后台 ---------------- */
+/* ---------------- 活动列表(超级权限落地页) ---------------- */
+const THEME_LABEL={wheel:'🎡 大转盘',scratch:'🎫 刮刮乐',match3:'🧩 三消',penalty:'⚽ 点球'};
+const CAMP_BADGE={planning:['⚪ 未开发','cb-plan'],preparing:['🔵 准备中','cb-prep'],running:['🟢 进行中','cb-run'],ended:['🏁 已结束','cb-end']};
+const CAMP_ORDER={running:0,preparing:1,planning:2,ended:3};
+function renderCampaigns(){
+  const ab=$('addCampBtn'); if(ab) ab.onclick=addCampaignModal;
+  const cl=$('campLogout'); if(cl) cl.onclick=logout;
+  const ct=$('campTools'); if(ct) ct.onclick=()=>go('admin');
+  const box=$('campBody'); if(box) box.innerHTML='<div class="adm-empty">加载中…</div>';
+  loadCampaignList();
+}
+async function loadCampaignList(){
+  const r=await adminWrite({action:'listCampaigns'});
+  const box=$('campBody'); if(!box) return;
+  if(!r||!r.ok){ box.innerHTML='<div class="cs-bad">连不上服务器,刷新重试</div>'; return; }
+  const camps=(r.campaigns||[]).slice().sort((a,b)=>(CAMP_ORDER[a.status]??9)-(CAMP_ORDER[b.status]??9));
+  if(!camps.length){ box.innerHTML='<div class="adm-empty">还没有活动 —— 点右上「+ 增加活动」建一个 👆</div>'; return; }
+  box.innerHTML=camps.map(c=>{
+    const bd=CAMP_BADGE[c.status]||['·','']; const act=c.status==='ended'?'查看存档':(c.status==='running'?'管理':'编辑草稿');
+    const st=c.stats?`<div class="cl-mini">👥 ${c.stats.participants} · 🛒 ${c.stats.orders} · 🎡 ${c.stats.spins}</div>`:'';
+    return `<button class="cl-card ${bd[1]}" data-camp="${c.id}" data-status="${c.status}">
+      <div class="cl-row"><span class="cl-title">${c.title||c.id}</span><span class="cl-badge ${bd[1]}">${bd[0]}</span></div>
+      <div class="cl-meta">${c.id} · ${THEME_LABEL[c.theme]||c.theme} · ${c.start||'?'}${c.end?(' ~ '+c.end):''}</div>
+      ${st}<div class="cl-go">${act} →</div></button>`;
+  }).join('');
+  box.querySelectorAll('[data-camp]').forEach(b=>b.onclick=()=>openCampaign(b.dataset.camp,b.dataset.status));
+}
+function openCampaign(id,status){
+  if(status==='running'){ go('admin'); }                    // 管理正在进行的(现有后台)
+  else if(status==='ended'){ openArchiveView(id); }          // 只读存档
+  else {                                                     // 草稿:准备中 —— 编辑/启动是第2步;现在可删
+    modal('🛠', id, '这个活动还在<b>准备中</b> 🛠<br>编辑设置 + 启动功能是<b>下一步(第2步)</b>开放。',
+      [{label:'🗑 删除这个草稿', action:async ()=>{ const r=await apiPOST('/api/admin',{action:'deleteCampaign',id}); if(r&&r.ok){ toastModal('已删除'); renderCampaigns(); } else toastModal(r&&r.hint?r.hint:'删除失败'); }},
+       {label:'关闭', sub:true}]);
+  }
+}
+function prizeName(k){ const q=byKey(k); if(!q) return k; if(q.type==='disc') return 'RM'+((q.a&&q.a.value)||'')+'券'; return q.sa||k; }
+async function openArchiveView(id){
+  const r=await adminWrite({action:'getCampaignArchive', id});
+  if(!r||!r.ok||!r.archive){ toastModal('没找到这个活动的存档'); return; }
+  const a=r.archive, c=r.campaign||{}, pc=a.prizeCounts||{};
+  const prizeRows=Object.keys(pc).length?Object.entries(pc).map(([k,n])=>`${prizeName(k)}:<b>${n}</b>`).join(' · '):'无';
+  const lb=(a.winners||[]).map((w,i)=>`${i+1}. ${w.name} (${w.n} 件)`).join('<br>')||'无';
+  modal('🏁', (c.title||id)+' · 存档',
+    `<div class="arv"><div class="arv-id">${id} · 已结束</div>
+      <div class="arv-nums"><div><b>${a.participants||0}</b><span>参与</span></div><div><b>${a.orders||0}</b><span>下单</span></div><div><b>${a.spins||0}</b><span>抽奖</span></div></div>
+      <div class="arv-h">各奖中出</div><div class="arv-p">${prizeRows}</div>
+      <div class="arv-h">排行榜</div><div class="arv-p">${lb}</div></div>`,
+    [{label:'关闭'}]);
+}
+function addCampaignModal(){
+  modal('➕','增加活动',
+    `<div class="ncf">
+      <div class="msg-lbl">活动码(MMD+日月年,如 MMD080826)</div><input id="ncCode" class="m-input camp-in" placeholder="MMD080826">
+      <div class="msg-lbl">标题</div><input id="ncTitle" class="m-input camp-in" placeholder="会员日 · 八月大转盘">
+      <div class="msg-lbl">游戏主题</div><select id="ncTheme" class="m-input camp-in"><option value="wheel">🎡 大转盘</option><option value="scratch">🎫 刮刮乐</option><option value="match3">🧩 三消</option><option value="penalty">⚽ 点球</option></select>
+      <div class="msg-lbl">开始日期(结束日自动 = 开始+6天,共7天)</div><input id="ncStart" class="m-input camp-in" placeholder="2026-08-01">
+    </div>`,
+    [{label:'创建活动',action:async ()=>{
+      const id=($('ncCode').value||'').trim().toUpperCase(), title=($('ncTitle').value||'').trim(), theme=$('ncTheme').value, start=($('ncStart').value||'').trim();
+      const r=await apiPOST('/api/admin',{action:'createCampaign',id,title,theme,start});
+      if(r&&r.ok){ toastModal('✅ 活动已创建(草稿)'); renderCampaigns(); }
+      else { toastModal(r&&r.hint?r.hint:'创建失败,检查活动码/日期格式 🙂'); }
+    }},{label:'取消',sub:true}]);
+}
+
 function renderAdmin(){
   renderTop();
   const live = MF.api;
@@ -884,7 +951,7 @@ $('loginBtn').onclick=async ()=>{
     if(r && r.ok===false && r.reason==='badphone'){ S.loggedIn=false; toastModal('服务器版请用大马手机号登入(例:0123456789)'); return; }
   }
   save();
-  go(S.admin?'admin':'home');
+  go(S.admin?'campaigns':'home');
 };
 function logout(){
   modal('🔓','退出登录?','回到登入页,可换名字/电话重新登入(本机进度会清空,方便换人测试)。',
@@ -923,7 +990,7 @@ function tickRedeem(){
 setInterval(tickRedeem, 1000);
 
 /* ---------------- 启动 ---------------- */
-if(S.loggedIn) go(S.admin?'admin':'home'); else go('login');
+if(S.loggedIn) go(S.admin?'campaigns':'home'); else go('login');
 updateCountdown();              // 立刻显示活动倒数(登入画面就看到)
 setInterval(updateCountdown, 1000);   // 每秒滴答(登入画面 + 顶部条,和是否登入无关)
 bootstrapServer();   // 拉取服务器共用配置(状态/权重/兑换码);连不上自动退回本机

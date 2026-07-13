@@ -1,7 +1,8 @@
 // POST /api/admin — 管理员写/读(cookie 或 body.secret 授权)
-import { loadConfig, saveConfig, adminOK, adminCookieOK, clampWeights, isStatus, loadStats, getRedemption, saveRedemption, listLeads, normPhone, json, kvSet,
+import { loadConfig, saveConfig, adminOK, adminCookieOK, clampWeights, isStatus, loadStats, getRedemption, saveRedemption, listLeads, normPhone, json, kvSet, kvGet,
   getCampaign, setCampaign, archiveCampaign, rollupCustomers, resetWorkingTables, getArchive, listArchives, customerFull,
-  ensureArchiveTables, ensureCampaigns, getCampaignReg, insertCampaignRegIfAbsent, listCampaignRegs } from './_lib.js';
+  ensureArchiveTables, ensureCampaigns, getCampaignReg, putCampaignReg, insertCampaignRegIfAbsent, listCampaignRegs,
+  DEFAULT_CONFIG, DEFAULT_WEIGHTS, klDate } from './_lib.js';
 
 export async function onRequestPost({ request, env }) {
   try {
@@ -93,6 +94,53 @@ export async function onRequestPost({ request, env }) {
       await kvSet(env, 'live_campaign', null);                                  // 迁移后没有正在进行的活动
       if (cfg.status !== 'closed') { cfg.status = 'closed'; await saveConfig(env, cfg); }
       return json({ ok: true, branch, rolled, registered: inserted, alreadyRegistered: !inserted, archiveExists: archived });
+    }
+
+    /* ===== 阶段A:活动列表 + 新建活动 + 存档详情 ===== */
+    if (action === 'listCampaigns') {
+      await ensureCampaigns(env); await ensureArchiveTables(env);
+      const regs = await listCampaignRegs(env);
+      const liveId = await kvGet(env, 'live_campaign');
+      const out = [];
+      for (const r of regs) {
+        let stats = null;
+        if (r.status === 'ended') { const a = await getArchive(env, r.archiveId || r.id); if (a) stats = { participants: a.participants || 0, orders: a.orders || 0, spins: a.spins || 0 }; }
+        else if (liveId && r.id === liveId) { const s = await loadStats(env); stats = { participants: s.participants || 0, orders: s.orders || 0, spins: s.spins || 0 }; }
+        out.push({ id: r.id, title: r.title, theme: r.theme, status: r.status, start: r.start, end: r.end, stats });
+      }
+      return json({ ok: true, liveId: liveId || null, campaigns: out });
+    }
+    if (action === 'createCampaign') {
+      const id = String(body.id || '').trim().toUpperCase();
+      if (!/^MMD\d{6}$/.test(id)) return json({ ok: false, error: 'bad_id', hint: '活动码格式:MMD + 6位日期,如 MMD080826' });
+      if (await getCampaignReg(env, id)) return json({ ok: false, error: 'exists', hint: '这个活动码已经有了,换一个' });
+      const start = String(body.start || '').trim();
+      const startMs = Date.parse(start + 'T00:00:00+08:00');
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || isNaN(startMs)) return json({ ok: false, error: 'bad_start', hint: '开始日期格式:2026-08-01' });
+      const end = klDate(startMs + 6 * 86400000);   // 固定 7 天(开始+6)——和游戏天数逻辑一致
+      const theme = String(body.theme || 'wheel').trim() || 'wheel';
+      const title = String(body.title || '').trim() || id;
+      const freshCfg = JSON.parse(JSON.stringify(DEFAULT_CONFIG));   // 全新独立设置(不从任何活动复制)
+      freshCfg.weights = { ...DEFAULT_WEIGHTS }; freshCfg.codes = {}; freshCfg.activityStart = start;
+      freshCfg.msgOrder = ''; freshCfg.msgRecover = ''; freshCfg.serverDraws = true; freshCfg.status = 'running';
+      const rec = { id, title, theme, status: 'planning', start, end, config: freshCfg, archiveId: id, historyKey: id, createdAt: Date.now(), updatedAt: Date.now() };
+      await putCampaignReg(env, rec);
+      return json({ ok: true, campaign: { id, title, theme, status: 'planning', start, end } });
+    }
+    if (action === 'getCampaignArchive') {   // 已结束活动 → 只读存档详情
+      const reg = await getCampaignReg(env, String(body.id || ''));
+      if (!reg) return json({ ok: false, error: 'notfound' });
+      const a = await getArchive(env, reg.archiveId || reg.id);
+      return json({ ok: true, campaign: { id: reg.id, title: reg.title, theme: reg.theme, start: reg.start, end: reg.end, status: reg.status }, archive: a || null });
+    }
+    if (action === 'deleteCampaign') {   // 只能删草稿(未启动)—— 绝不碰已结束的存档/顾客
+      const id = String(body.id || '').trim().toUpperCase();
+      const reg = await getCampaignReg(env, id);
+      if (!reg) return json({ ok: false, error: 'notfound' });
+      if (reg.status === 'ended' || reg.status === 'running') return json({ ok: false, error: 'not_draft', hint: '只能删除还没启动的草稿活动。' });
+      if ((await kvGet(env, 'live_campaign')) === id) return json({ ok: false, error: 'is_live' });
+      await env.DB.prepare('DELETE FROM campaigns WHERE id=?').bind(id).run();
+      return json({ ok: true, deleted: id });
     }
 
     /* ===== 阶段1:主题期(campaign)+ 永久档案 + 存档 ===== */

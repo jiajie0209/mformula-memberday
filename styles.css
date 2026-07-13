@@ -309,6 +309,41 @@ table.help-t tr td:first-child{font-weight:700;background:#faf6ec;white-space:no
 .mp-grid span{display:block;font-size:10px;color:#bcd0cc;margin-top:2px;}
 .mp-tier{margin-top:11px;text-align:center;font-size:12.5px;font-weight:700;color:var(--gold-ll);background:rgba(240,197,107,.1);border-radius:8px;padding:6px;}
 
+/* ===== 阶段A:活动列表选择画面 ===== */
+#screen-campaigns{padding:16px 16px 30px;}
+.cl-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.cl-head h2{font-size:19px;font-weight:800;color:var(--navy);}
+.cl-add{background:var(--navy);color:var(--gold-ll);border:none;border-radius:11px;padding:9px 13px;font-size:13px;font-weight:800;box-shadow:0 6px 14px rgba(14,57,71,.2);}
+.cl-add:active{transform:scale(.97);}
+.cl-card{display:block;width:100%;text-align:left;background:#fff;border:none;border-left:4px solid var(--line);border-radius:13px;padding:13px 15px;margin-bottom:11px;box-shadow:0 5px 14px rgba(14,57,71,.07);}
+.cl-card:active{transform:scale(.995);}
+.cl-card.cb-run{border-left-color:#2e9e5b;}
+.cl-card.cb-prep{border-left-color:#2f6fd0;}
+.cl-card.cb-plan{border-left-color:#b9bfc4;}
+.cl-card.cb-end{border-left-color:#5a6b74;}
+.cl-row{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.cl-title{font-size:15.5px;font-weight:800;color:var(--navy);}
+.cl-badge{font-size:11px;font-weight:800;padding:3px 9px;border-radius:20px;white-space:nowrap;}
+.cl-badge.cb-run{background:rgba(46,158,91,.14);color:#217a44;}
+.cl-badge.cb-prep{background:rgba(47,111,208,.14);color:#2559a8;}
+.cl-badge.cb-plan{background:rgba(120,130,138,.14);color:#69737a;}
+.cl-badge.cb-end{background:rgba(90,107,116,.14);color:#4a565d;}
+.cl-meta{font-size:12px;color:var(--muted);margin-top:5px;}
+.cl-mini{font-size:12.5px;color:var(--navy);font-weight:600;margin-top:6px;}
+.cl-go{font-size:12.5px;font-weight:800;color:var(--gold-d);margin-top:8px;}
+.cl-tools{width:100%;background:#fff;border:1.5px solid #f0d9a8;border-radius:12px;padding:12px;font-size:13px;font-weight:700;color:var(--gold-d);margin-top:6px;box-shadow:0 4px 12px rgba(213,162,60,.1);}
+/* 新建活动表单 + 存档详情(弹窗内) */
+.ncf{text-align:left;}
+.ncf .camp-in{margin-top:6px;}
+.arv{text-align:left;}
+.arv-id{font-size:12px;color:var(--muted);margin-bottom:10px;}
+.arv-nums{display:flex;gap:8px;text-align:center;margin-bottom:12px;}
+.arv-nums>div{flex:1;background:rgba(14,57,71,.05);border-radius:10px;padding:9px 4px;}
+.arv-nums b{display:block;font-size:20px;font-weight:900;color:var(--navy);}
+.arv-nums span{display:block;font-size:11px;color:var(--muted);margin-top:2px;}
+.arv-h{font-size:13px;font-weight:800;color:var(--navy);margin:10px 0 4px;}
+.arv-p{font-size:12.5px;color:#3a4a52;line-height:1.7;}
+
 /* ====== MFormula 大转盘 — Brand-forward editorial (final) ======
    Machined navy/gold watch bezel, framed product-photo chips,
    D2 Safari-safe pointer, glowing dual jackpots, navy auto-double card.
