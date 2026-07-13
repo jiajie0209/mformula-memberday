@@ -381,3 +381,36 @@ export async function customerFull(env, phone) {
   const camp = await getCampaign(env);
   return { phone: np, customer, current: current ? { campaignId: camp.id, title: camp.title, ...current } : null };
 }
+
+/* ============================================================
+   阶段2:活动登记表(campaigns registry)—— 每个活动一行,含它自己独立的设置
+   非破坏:ensureCampaigns 只建表;迁移/归档是单独的显式动作(见 admin.js)
+   ============================================================ */
+let _campaignsReady = false;
+export async function ensureCampaigns(env) {
+  if (_campaignsReady) return;
+  await env.DB.prepare('CREATE TABLE IF NOT EXISTS campaigns (id TEXT PRIMARY KEY, data TEXT NOT NULL)').run();
+  _campaignsReady = true;
+}
+export async function getCampaignReg(env, id) {
+  await ensureCampaigns(env);
+  const r = await env.DB.prepare('SELECT data FROM campaigns WHERE id=?').bind(String(id || '')).first();
+  try { return r ? JSON.parse(r.data) : null; } catch (e) { return null; }
+}
+export async function putCampaignReg(env, rec) {   // 覆盖写(编辑草稿/更新)
+  await ensureCampaigns(env);
+  await env.DB.prepare('INSERT INTO campaigns (id,data) VALUES (?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data').bind(rec.id, JSON.stringify(rec)).run();
+  return rec;
+}
+export async function insertCampaignRegIfAbsent(env, rec) {   // 幂等插入(不覆盖已有)
+  await ensureCampaigns(env);
+  const r = await env.DB.prepare('INSERT INTO campaigns (id,data) VALUES (?,?) ON CONFLICT(id) DO NOTHING').bind(rec.id, JSON.stringify(rec)).run();
+  return !!(r.meta && r.meta.changes > 0);
+}
+export async function listCampaignRegs(env) {
+  await ensureCampaigns(env);
+  const rows = (await env.DB.prepare('SELECT data FROM campaigns').all()).results || [];
+  const out = [];
+  for (const row of rows) { try { out.push(JSON.parse(row.data)); } catch (e) {} }
+  return out;
+}

@@ -1,6 +1,7 @@
 // POST /api/admin — 管理员写/读(cookie 或 body.secret 授权)
-import { loadConfig, saveConfig, adminOK, adminCookieOK, clampWeights, isStatus, loadStats, getRedemption, saveRedemption, listLeads, normPhone, json,
-  getCampaign, setCampaign, archiveCampaign, rollupCustomers, resetWorkingTables, getArchive, listArchives, customerFull } from './_lib.js';
+import { loadConfig, saveConfig, adminOK, adminCookieOK, clampWeights, isStatus, loadStats, getRedemption, saveRedemption, listLeads, normPhone, json, kvSet,
+  getCampaign, setCampaign, archiveCampaign, rollupCustomers, resetWorkingTables, getArchive, listArchives, customerFull,
+  ensureArchiveTables, ensureCampaigns, getCampaignReg, insertCampaignRegIfAbsent, listCampaignRegs } from './_lib.js';
 
 export async function onRequestPost({ request, env }) {
   try {
@@ -48,6 +49,46 @@ export async function onRequestPost({ request, env }) {
       }
       if (n > 0) await env.DB.prepare('UPDATE stats SET participants = max(0, participants - ?) WHERE id=1').bind(n).run();
       return json({ ok: true, deleted: n });
+    }
+
+    /* ===== 阶段2:活动登记 + 7月迁移(第0步:先看状态,再显式迁移) ===== */
+    if (action === 'migrateStatus') {   // 只读:报告 7月当前数据状态,不动任何东西
+      await ensureArchiveTables(env); await ensureCampaigns(env);
+      const camp = await getCampaign(env);
+      const cfg = await loadConfig(env);
+      const st = await loadStats(env);
+      const archived = !!(await getArchive(env, '2026-07'));
+      const memRow = await env.DB.prepare('SELECT COUNT(*) AS n FROM members').first();
+      const custRow = await env.DB.prepare('SELECT COUNT(*) AS n FROM customers').first();
+      const reg = await getCampaignReg(env, 'MMD070726');
+      const regCount = (await listCampaignRegs(env)).length;
+      return json({ ok: true, status: {
+        currentCampaignId: camp.id, currentTitle: camp.title, cfgStatus: cfg.status,
+        julyArchived: archived, liveMembers: (memRow && memRow.n) || 0, liveParticipants: st.participants || 0, liveOrders: st.orders || 0,
+        customersCount: (custRow && custRow.n) || 0, alreadyRegistered: !!reg, registryCount: regCount,
+      } });
+    }
+    if (action === 'migrateJuly') {   // 显式迁移:7月 → 登记为 MMD070726(已结束)。幂等,先存档(若还没)再登记
+      await ensureArchiveTables(env); await ensureCampaigns(env);
+      const JK = '2026-07';
+      const camp = await getCampaign(env);
+      const julyCamp = { id: JK, title: camp.title || '会员日 · 七月大转盘', theme: 'wheel', start: camp.start || '2026-07-01', end: camp.end || '2026-07-07' };
+      let archived = !!(await getArchive(env, JK));
+      let rolled = 0, branch;
+      if (!archived) {
+        const memRow = await env.DB.prepare('SELECT COUNT(*) AS n FROM members').first();
+        const memCount = (memRow && memRow.n) || 0;
+        const st = await loadStats(env);
+        if (memCount === 0 && (st.participants || 0) === 0) { branch = 'empty'; }   // 没数据 → 只登记
+        else { await archiveCampaign(env, julyCamp); rolled = await rollupCustomers(env, julyCamp); await resetWorkingTables(env); archived = true; branch = 'archived-now'; }
+      } else { branch = 'already-archived'; }
+      const cfg = await loadConfig(env);   // 7月的设置原样存进登记条目(完整快照,别只靠 archive)
+      const rec = { id: 'MMD070726', title: julyCamp.title, theme: 'wheel', status: 'ended', start: julyCamp.start, end: julyCamp.end,
+        config: cfg, archiveId: JK, historyKey: JK, createdAt: Date.now(), updatedAt: Date.now() };
+      const inserted = await insertCampaignRegIfAbsent(env, rec);
+      await kvSet(env, 'live_campaign', null);                                  // 迁移后没有正在进行的活动
+      if (cfg.status !== 'closed') { cfg.status = 'closed'; await saveConfig(env, cfg); }
+      return json({ ok: true, branch, rolled, registered: inserted, alreadyRegistered: !inserted, archiveExists: archived });
     }
 
     /* ===== 阶段1:主题期(campaign)+ 永久档案 + 存档 ===== */
