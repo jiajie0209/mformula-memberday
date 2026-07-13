@@ -162,7 +162,7 @@ const curPkg = () => PACKAGES.find(p=>p.key===S.pickPkg) || PACKAGES[0];
 
 /* ---------------- 路由 ---------------- */
 function go(name){
-  $('phone').classList.toggle('bare', name==='login');
+  $('phone').classList.toggle('bare', name==='login'||name==='campaigns'||name==='admin');   // 管理员画面不显示顾客顶栏
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   $('screen-'+name).classList.add('active');
   $('main').scrollTop=0;
