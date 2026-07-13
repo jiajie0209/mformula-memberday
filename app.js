@@ -633,8 +633,22 @@ function renderAdmin(){
     <div class="act-cur ${cur.tone}">当前状态:<b>${cur.emoji} ${cur.label}</b></div>
     <div class="act-btns">${stOpts.map(([k,lbl])=>`<button class="act-set ${actStatus===k?'on':''}" data-act="${k}">${lbl}</button>`).join('')}</div>
     <div class="adm-note">非「进行中」时,用户会看到对应提示且不能抽奖(已抽中的好礼仍可在 24 小时内兑换)。${MF.api?'✅ <b>已连服务器:改了对所有顾客即时生效</b>。':'⚠️ 未连服务器,只存本机。'}</div></div>`;
+  const campCard = live ? `<div class="adm-card camp-card"><div class="adm-h">📅 本期主题 · 结束归档</div>
+    <div id="campNow" class="camp-now"><div class="adm-empty">加载中…</div></div>
+    <div class="camp-next">
+      <div class="msg-lbl" style="margin-top:2px">▶️ 结束后开新一期(留空 = 只收档,不开新)</div>
+      <input id="nextId" class="m-input camp-in" placeholder="新期号 如 2026-08">
+      <input id="nextTitle" class="m-input camp-in" placeholder="标题 如 会员日·八月三消">
+      <input id="nextTheme" class="m-input camp-in" placeholder="主题 wheel / match3 / penalty">
+      <div class="camp-dates"><input id="nextStart" class="m-input camp-in" placeholder="开始 2026-08-01"><input id="nextEnd" class="m-input camp-in" placeholder="结束 2026-08-07"></div>
+    </div>
+    <button id="closeCampBtn" class="danger-btn">🔚 结束本期并归档</button>
+    <div class="adm-note">按下会:①存档本期整体成绩 ②把每位顾客成绩写进永久档案 ③清空本期数据换新主题。<b>数据不会丢,往期永久保存。</b></div></div>` : '';
+  const archCard = live ? `<div class="adm-card"><div class="adm-h">📚 往期存档(历史主题成绩)</div>
+    <div id="archList"><div class="adm-empty">加载中…</div></div>
+    <div class="adm-note">每期归档后,整体成绩永久留在这里,随时回看。</div></div>` : '';
   const topNote = live ? '✅ 下面是<b>真实数据</b>(服务器实时统计)。' : '⚠️ 下面人数/排行是 <b>demo 模拟数据</b>(未连服务器)。';
-  $('adminBody').innerHTML=`<div class="adm-note top">${topNote}</div>${actCard}${stats}${prizeCard}${lb}${csCard}${findCard}${msgCard}${leadsCard}${weightsCard}${codes}<button class="ghost" id="admLogout">退出登录</button>`;
+  $('adminBody').innerHTML=`<div class="adm-note top">${topNote}</div>${actCard}${campCard}${archCard}${stats}${prizeCard}${lb}${csCard}${findCard}${msgCard}${leadsCard}${weightsCard}${codes}<button class="ghost" id="admLogout">退出登录</button>`;
   const add=$('addCodeBtn'); if(add) add.onclick=async ()=>{
     const c=($('newCode').value||'').trim().toUpperCase(), n=parseInt($('newCodeN').value,10);
     if(!c||!(n>0)){ toastModal('填写码和次数 🙂'); return; }
@@ -652,8 +666,35 @@ function renderAdmin(){
   const msb=$('msgSaveBtn'); if(msb) msb.onclick=saveMsgTpls;
   const mrb=$('msgResetBtn'); if(mrb) mrb.onclick=()=>{ MSG_RECOVER=DEF_MSG_RECOVER; MSG_ORDER=DEF_MSG_ORDER; if($('msgRecover'))$('msgRecover').value=MSG_RECOVER; if($('msgOrder'))$('msgOrder').value=MSG_ORDER; toastModal('已恢复默认(记得按保存 💾)'); };
   const lb2=$('leadsBtn'); if(lb2) lb2.onclick=exportLeads;
+  const ccb=$('closeCampBtn'); if(ccb) ccb.onclick=closeCampaign;
   const lo=$('admLogout'); if(lo) lo.onclick=logout;
-  if(live){ loadAdminStats(); if(!codesLoaded) loadAdminCodes(); }
+  if(live){ loadAdminStats(); loadCampaignInfo(); if(!codesLoaded) loadAdminCodes(); }
+}
+async function loadCampaignInfo(){          // 本期主题 + 往期存档列表
+  const c = await adminWrite({action:'getCampaign'});
+  if(c && c.ok && c.campaign && $('campNow')){ const cp=c.campaign;
+    $('campNow').innerHTML = `<div class="camp-badge">${cp.title||cp.id}</div><div class="camp-meta">期号 <b>${cp.id}</b> · 主题 <b>${cp.theme||'—'}</b> · ${cp.start||'?'} ~ ${cp.end||'?'}</div>`; }
+  const a = await adminWrite({action:'listArchives'});
+  if(a && a.ok && $('archList')){ const arr=a.archives||[];
+    $('archList').innerHTML = arr.length
+      ? arr.map(x=>`<div class="arch-row"><div class="arch-t">${x.title||x.id}${x.theme?` <span class="arch-th">${x.theme}</span>`:''}</div><div class="arch-n">👥 ${x.participants} 人 · 🛒 ${x.orders} 单 · 🎡 ${x.spins} 抽</div></div>`).join('')
+      : '<div class="adm-empty">还没有往期存档 —— 结束第一期后会出现在这里。</div>'; }
+}
+async function closeCampaign(){             // 结束本期并归档(强确认)
+  const id=($('nextId').value||'').trim();
+  const nextInfo = id ? { id, title:($('nextTitle').value||'').trim(), theme:(($('nextTheme').value||'wheel').trim()||'wheel'), start:($('nextStart').value||'').trim(), end:($('nextEnd').value||'').trim() } : null;
+  const msg = nextInfo
+    ? `确定<b>结束本期并归档</b>,然后开新一期 <b>${id}</b>?<br><br>本期成绩会永久存档 + 写进每位顾客档案,再清空当前数据换新主题。<b>数据不会丢。</b>`
+    : `确定<b>结束本期并归档</b>?<br><br>本期成绩会永久存档 + 写进每位顾客档案,再清空当前数据(活动进入「关闭」)。<b>数据不会丢。</b>`;
+  modal('🔚','结束本期并归档', msg, [
+    {label:'确定结束并归档', action:async ()=>{
+      const r=await apiPOST('/api/admin', {action:'closeAndArchive', next:nextInfo});   // 直连:非 ok 也能拿到 hint(empty/same_id/bad_start)
+      if(r && r.ok){ actStatus = r.next?'running':'closed'; saveStatus();
+        modal('✅','已归档', `本期 <b>${r.archived}</b> 已存档,<b>${r.rolled}</b> 位顾客写进永久档案。${r.next?('新一期 <b>'+r.next+'</b> 已开始 🎬'):'活动已关闭 🔒'}`, [{label:'好的', action:renderAdmin}]); }
+      else { toastModal(r&&r.hint ? r.hint : (r&&r.error ? ('归档失败:'+r.error) : '归档失败,请重试 ⚠️')); }
+    }},
+    {label:'取消', sub:true}
+  ]);
 }
 async function loadAdminCodes(){          // 从服务器拉真实兑换码列表(后台显示服务器为准)
   const r = await adminWrite({action:'get'});
@@ -723,9 +764,12 @@ async function findMember(){                // 客服查顾客:电话 → 抽中
   const p=($('findPhone').value||'').trim(); const box=$('findResult'); if(!box) return;
   if(!p){ box.innerHTML='<div class="cs-bad">请输入电话</div>'; return; }
   box.innerHTML='<div class="adm-empty">查询中…</div>';
-  const r=await adminWrite({action:'findPhone', phone:p});
+  const [r, cf]=await Promise.all([ adminWrite({action:'findPhone', phone:p}), adminWrite({action:'customerFull', phone:p}) ]);
   if(!r || !r.ok){ box.innerHTML='<div class="cs-bad">服务器没回应,再试一次</div>'; return; }
-  if(!r.found || !r.found.length){ box.innerHTML='<div class="cs-bad">找不到这个电话(可能还没玩过,或号码不对)</div>'; return; }
+  const cust=(cf&&cf.ok)?cf.customer:null;                     // 跨月永久档案(归档后才有)
+  const passportHTML = cust ? (()=>{ const tierName={gold:'金卡',silver:'银卡',member:'会员'}[cust.tier]||'会员';
+    return `<div class="mp-card"><div class="mp-h">🪪 会员档案 · 跨月累积</div><div class="mp-grid"><div><b>${cust.campaignsJoined||0}</b><span>参加期数</span></div><div><b>${cust.totalPrizes||0}</b><span>累计好礼</span></div><div><b>${cust.totalOrders||0}</b><span>累计下单</span></div><div><b>RM${cust.totalSavedRM||0}</b><span>累计省下</span></div></div><div class="mp-tier">🏅 ${tierName} · ${cust.points||0} 分</div></div>`; })() : '';
+  if(!r.found || !r.found.length){ box.innerHTML = passportHTML + (passportHTML?'<div class="cs-row" style="padding:8px 16px">本期还没玩过(上面是他过往累积的档案)。</div>':'<div class="cs-bad">找不到这个电话(可能还没玩过,或号码不对)</div>'); return; }
   const ORDER=['g5','g10','g15','tumbler','duffle','free','gold','v5','v10','v30','v50'];
   const line=(k,is4)=>{ const q=byKey(k); if(!q) return '🎁 '+k;
     if(q.type==='disc') return '🎁 RM'+((is4?q.b.value:q.a.value)||0)+' Voucher';
@@ -758,6 +802,7 @@ async function findMember(){                // 客服查顾客:电话 → 抽中
       <div class="fm-pkg"><div class="fm-h">4盒 RM716 <span>(可选${pick3}样)</span></div><div class="fm-list">${disp3}</div></div>
       <button class="fm-copy" data-copy="${encodeURIComponent(msg)}">📋 ${anyExpired?'复制「恢复」消息':'复制给顾客'}</button></div>`;
   }).join('');
+  box.innerHTML = passportHTML + box.innerHTML;                // 跨月档案置顶
   box.querySelectorAll('[data-copy]').forEach(btn=>btn.onclick=()=>{
     const t=decodeURIComponent(btn.dataset.copy), done=()=>toastModal('已复制 ✅ 去 WhatsApp 贴给顾客就行');
     if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(done).catch(()=>fmFallbackCopy(t,done));

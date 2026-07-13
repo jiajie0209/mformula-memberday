@@ -1,5 +1,6 @@
 // POST /api/admin — 管理员写/读(cookie 或 body.secret 授权)
-import { loadConfig, saveConfig, adminOK, adminCookieOK, clampWeights, isStatus, loadStats, getRedemption, saveRedemption, listLeads, normPhone, json } from './_lib.js';
+import { loadConfig, saveConfig, adminOK, adminCookieOK, clampWeights, isStatus, loadStats, getRedemption, saveRedemption, listLeads, normPhone, json,
+  getCampaign, setCampaign, archiveCampaign, rollupCustomers, resetWorkingTables, getArchive, listArchives, customerFull } from './_lib.js';
 
 export async function onRequestPost({ request, env }) {
   try {
@@ -47,6 +48,38 @@ export async function onRequestPost({ request, env }) {
       }
       if (n > 0) await env.DB.prepare('UPDATE stats SET participants = max(0, participants - ?) WHERE id=1').bind(n).run();
       return json({ ok: true, deleted: n });
+    }
+
+    /* ===== 阶段1:主题期(campaign)+ 永久档案 + 存档 ===== */
+    if (action === 'getCampaign') return json({ ok: true, campaign: await getCampaign(env) });
+    if (action === 'listArchives') return json({ ok: true, archives: await listArchives(env) });
+    if (action === 'getArchive') return json({ ok: true, archive: await getArchive(env, body.id) });
+    if (action === 'customerFull') return json({ ok: true, ...(await customerFull(env, body.phone) || { phone: null, customer: null, current: null }) });
+    if (action === 'setCampaign') {
+      try { return json({ ok: true, campaign: await setCampaign(env, body.campaign || {}) }); }
+      catch (e) { return json({ ok: false, error: 'bad_campaign' }); }
+    }
+    if (action === 'closeAndArchive') {   // 结束本期:先存档 + 滚进永久档案,成功后才清空,再开新一期
+      const camp = await getCampaign(env);
+      const nextId = (body.next && String(body.next.id || '').trim()) || '';
+      const nextStart = (body.next && String(body.next.start || '').trim()) || '';
+      if (nextId && nextId === camp.id) return json({ ok: false, error: 'same_id', hint: '新期号不能和刚结束的一样' });
+      if (nextId && !/^\d{4}-\d{2}-\d{2}$/.test(nextStart))            // 开新一期必须有合法开始日,否则新一期发不出抽奖次数
+        return json({ ok: false, error: 'bad_start', hint: '开新一期要填开始日期,格式 2026-08-01' });
+      const existing = await getArchive(env, camp.id);
+      const stats = await loadStats(env);
+      const memRow = await env.DB.prepare('SELECT COUNT(*) AS n FROM members').first();
+      const memCount = (memRow && memRow.n) || 0;
+      if (!existing && memCount === 0 && (stats.participants || 0) === 0)
+        return json({ ok: false, error: 'empty', hint: '本期(' + camp.id + ')还没有任何数据,不需要归档。' });
+      const summary = existing || await archiveCampaign(env, camp);   // 1) 存档(已存过则保留,不用零覆盖)
+      const rolled = await rollupCustomers(env, camp);                // 2) 滚进永久顾客档案(幂等)
+      await resetWorkingTables(env);                                  // 3) 前两步成功才清空
+      const cfg = await loadConfig(env);                             // 4) 设新一期 or 收档
+      if (nextId) { await setCampaign(env, body.next); cfg.status = 'running'; cfg.activityStart = nextStart; }  // 天数从新一期开始日重算 → 新一期正常发次数
+      else { cfg.status = 'closed'; }
+      await saveConfig(env, cfg);
+      return json({ ok: true, archived: camp.id, rolled, participants: summary.participants, orders: summary.orders, next: nextId || null });
     }
 
     const cfg = await loadConfig(env); let mutated = false;

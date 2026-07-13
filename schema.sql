@@ -29,3 +29,9 @@ CREATE TABLE IF NOT EXISTS sentinels (k TEXT PRIMARY KEY);
 
 -- 下单记录(客服核对)
 CREATE TABLE IF NOT EXISTS redemptions (code TEXT PRIMARY KEY, data TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'issued');
+
+-- ===== 阶段1:每月主题化 + 数据永久保留 =====
+-- 会员永久档案(按电话,跨所有主题累积,永不清空)—— 代码会自动建表,这里仅作记录
+CREATE TABLE IF NOT EXISTS customers (phone TEXT PRIMARY KEY, data TEXT NOT NULL);
+-- 往期存档(每期一份整体成绩快照,只读)
+CREATE TABLE IF NOT EXISTS campaign_archives (id TEXT PRIMARY KEY, ended_at INTEGER NOT NULL, data TEXT NOT NULL);

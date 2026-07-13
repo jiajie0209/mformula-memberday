@@ -286,6 +286,29 @@ table.help-t tr td:first-child{font-weight:700;background:#faf6ec;white-space:no
 .msg-ta:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(213,162,60,.12);}
 .fm-exp{font-size:11px;font-weight:700;color:#b03b3b;background:rgba(192,57,43,.1);padding:1px 6px;border-radius:6px;margin-left:4px;white-space:nowrap;}
 
+/* ===== 阶段1:本期主题 · 归档 · 往期存档 · 会员档案 ===== */
+.camp-now{background:linear-gradient(100deg,#0E3947,#155063);border-radius:12px;padding:12px 14px;color:#fff;margin-bottom:10px;}
+.camp-badge{font-size:16px;font-weight:800;color:var(--gold-ll);}
+.camp-meta{font-size:12px;color:#cfe0dc;margin-top:4px;}
+.camp-meta b{color:#fff;}
+.camp-next{margin:2px 0 10px;}
+.camp-in{height:42px;font-size:14px;text-align:left;text-transform:none;letter-spacing:0;margin-top:8px;}
+.camp-dates{display:flex;gap:8px;}
+.camp-dates .camp-in{flex:1;}
+.danger-btn{width:100%;height:48px;border:none;border-radius:12px;background:linear-gradient(180deg,#c0392b,#a5281b);color:#fff;font-size:15px;font-weight:800;box-shadow:0 8px 18px rgba(192,57,43,.28);}
+.danger-btn:active{transform:translateY(1px);}
+.arch-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 2px;border-bottom:1px solid var(--line);}
+.arch-row:last-child{border-bottom:none;}
+.arch-t{font-size:14px;font-weight:800;color:var(--navy);}
+.arch-th{font-size:10px;font-weight:700;color:var(--gold-d);background:rgba(213,162,60,.14);padding:1px 7px;border-radius:20px;margin-left:4px;}
+.arch-n{font-size:12px;color:var(--muted);white-space:nowrap;}
+.mp-card{background:linear-gradient(120deg,#103f4d,#0E3947);border:1px solid rgba(240,197,107,.3);border-radius:14px;padding:13px 15px;margin:0 16px 12px;color:#fff;}
+.mp-h{font-size:13px;font-weight:800;color:var(--gold-ll);margin-bottom:10px;}
+.mp-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;text-align:center;}
+.mp-grid b{display:block;font-size:19px;font-weight:900;color:#fff;line-height:1.1;}
+.mp-grid span{display:block;font-size:10px;color:#bcd0cc;margin-top:2px;}
+.mp-tier{margin-top:11px;text-align:center;font-size:12.5px;font-weight:700;color:var(--gold-ll);background:rgba(240,197,107,.1);border-radius:8px;padding:6px;}
+
 /* ====== MFormula 大转盘 — Brand-forward editorial (final) ======
    Machined navy/gold watch bezel, framed product-photo chips,
    D2 Safari-safe pointer, glowing dual jackpots, navy auto-double card.

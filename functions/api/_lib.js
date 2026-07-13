@@ -238,3 +238,146 @@ export async function listLeads(env) {
   }
   return out;
 }
+
+/* ============================================================
+   阶段1:每月主题(campaign)+ 会员永久档案 + 往期存档
+   —— 底层游戏(spin/session/order)完全不碰,只在外面加一层永久层
+   ============================================================ */
+
+// 懒建表:第一次用到时自动建好,不用手动去 D1 控制台跑 SQL
+let _archiveTablesReady = false;
+export async function ensureArchiveTables(env) {
+  if (_archiveTablesReady) return;
+  await env.DB.prepare('CREATE TABLE IF NOT EXISTS customers (phone TEXT PRIMARY KEY, data TEXT NOT NULL)').run();
+  await env.DB.prepare('CREATE TABLE IF NOT EXISTS campaign_archives (id TEXT PRIMARY KEY, ended_at INTEGER NOT NULL, data TEXT NOT NULL)').run();
+  _archiveTablesReady = true;
+}
+
+// 当前是哪一期(没设过就默认 7月大转盘)
+const DEFAULT_CAMPAIGN = { id: '2026-07', title: '会员日 · 七月大转盘', theme: 'wheel', start: '2026-07-01', end: '2026-07-07' };
+export async function getCampaign(env) {
+  const c = await kvGet(env, 'current_campaign');
+  return (c && typeof c === 'object' && c.id) ? c : { ...DEFAULT_CAMPAIGN };
+}
+export async function setCampaign(env, camp) {
+  const c = {
+    id: String((camp && camp.id) || '').trim(),
+    title: String((camp && camp.title) || ''),
+    theme: String((camp && camp.theme) || 'wheel'),
+    start: String((camp && camp.start) || ''),
+    end: String((camp && camp.end) || ''),
+  };
+  if (!c.id) throw new Error('bad_campaign_id');
+  await kvSet(env, 'current_campaign', c);
+  return c;
+}
+
+// 一个会员在本期的战绩(用于写进永久档案 / 客服跨月查)
+export function memberResult(m) {
+  const won = Array.isArray(m.won) ? m.won : [];
+  const drawsUsed = Object.values(m.days || {}).reduce((s, d) => s + (d.used || 0), 0) + (m.bonusUsed || 0);
+  let savedRM = 0; for (const k of won) if (DISC[k]) savedRM += DISC[k][0];   // 折扣券面额(基础/2盒口径)
+  return { name: m.name || '', prizes: won, prizeCount: won.length, orders: m.orderCount || 0, draws: drawsUsed, savedRM };
+}
+function tierOf(points) { return points >= 500 ? 'gold' : (points >= 200 ? 'silver' : 'member'); }
+
+export async function getCustomer(env, phone) {
+  await ensureArchiveTables(env);
+  const np = normPhone(phone); if (!np) return null;
+  const r = await env.DB.prepare('SELECT data FROM customers WHERE phone=?').bind(np).first();
+  try { return r ? JSON.parse(r.data) : null; } catch (e) { return null; }
+}
+
+// 把本期所有(有活动的)会员滚进永久 customers 档案。幂等:同一期只记一次
+export async function rollupCustomers(env, campaign) {
+  await ensureArchiveTables(env);
+  const cid = campaign.id;
+  const rows = (await env.DB.prepare('SELECT data FROM members').all()).results || [];
+  // 1) 先按「电话」把同号多行(如同一人用不同名字登入 = 不同 memberId)合并成一份战绩,避免漏算
+  const byPhone = new Map();
+  for (const row of rows) {
+    let m; try { m = JSON.parse(row.data); } catch (e) { continue; }
+    const phone = normPhone(m.phone); if (!phone) continue;
+    const res = memberResult(m);
+    if (res.prizeCount === 0 && res.orders === 0 && res.draws === 0) continue;   // 纯登入没玩的不占档案
+    const acc = byPhone.get(phone) || { name: res.name, prizes: [], prizeCount: 0, orders: 0, draws: 0, savedRM: 0 };
+    acc.name = res.name || acc.name;
+    acc.prizes = acc.prizes.concat(res.prizes);
+    acc.prizeCount += res.prizeCount;
+    acc.orders += res.orders;
+    acc.draws += res.draws;
+    acc.savedRM += res.savedRM;
+    byPhone.set(phone, acc);
+  }
+  // 2) 每个电话滚进永久档案(幂等:上一轮已记过这期 → 跳过,不重复累加)
+  let rolled = 0;
+  for (const [phone, res] of byPhone) {
+    const cur = await getCustomer(env, phone);
+    const c = cur || { phone, name: res.name, firstSeen: cid, lastSeen: cid, campaignsJoined: 0,
+                       totalPrizes: 0, totalOrders: 0, totalSavedRM: 0, points: 0, tier: 'member', history: {} };
+    if (!c.history) c.history = {};
+    if (c.history[cid]) continue;   // 幂等:这期已归档过 → 跳过
+    c.name = res.name || c.name;
+    c.lastSeen = cid;
+    c.campaignsJoined = (c.campaignsJoined || 0) + 1;
+    c.totalPrizes = (c.totalPrizes || 0) + res.prizeCount;
+    c.totalOrders = (c.totalOrders || 0) + res.orders;
+    c.totalSavedRM = (c.totalSavedRM || 0) + res.savedRM;
+    c.points = (c.points || 0) + res.prizeCount * 10 + res.orders * 50;   // 简单积分:每件好礼+10,每单+50
+    c.tier = tierOf(c.points);
+    c.history[cid] = { theme: campaign.theme || '', title: campaign.title || cid, prizes: res.prizes, prizeCount: res.prizeCount, orders: res.orders, draws: res.draws, savedRM: res.savedRM };
+    await env.DB.prepare('INSERT INTO customers (phone,data) VALUES (?,?) ON CONFLICT(phone) DO UPDATE SET data=excluded.data')
+      .bind(phone, JSON.stringify(c)).run();
+    rolled++;
+  }
+  return rolled;
+}
+
+// 封存一期整体成绩(只读快照)
+export async function archiveCampaign(env, campaign) {
+  await ensureArchiveTables(env);
+  const stats = await loadStats(env);
+  const cfg = await loadConfig(env);
+  const summary = {
+    campaign, endedAt: Date.now(),
+    participants: stats.participants, spins: stats.spins, orders: stats.orders,
+    prizeCounts: stats.prizeCounts, winners: stats.winners,
+    config: { weights: cfg.weights, codes: cfg.codes, activityStart: cfg.activityStart, dayDraws: cfg.dayDraws },
+  };
+  await env.DB.prepare('INSERT INTO campaign_archives (id,ended_at,data) VALUES (?,?,?) ON CONFLICT(id) DO UPDATE SET ended_at=excluded.ended_at, data=excluded.data')
+    .bind(campaign.id, summary.endedAt, JSON.stringify(summary)).run();
+  return summary;
+}
+export async function getArchive(env, id) {
+  await ensureArchiveTables(env);
+  const r = await env.DB.prepare('SELECT data FROM campaign_archives WHERE id=?').bind(String(id || '')).first();
+  try { return r ? JSON.parse(r.data) : null; } catch (e) { return null; }
+}
+export async function listArchives(env) {
+  await ensureArchiveTables(env);
+  const rows = (await env.DB.prepare('SELECT id,ended_at,data FROM campaign_archives ORDER BY ended_at DESC').all()).results || [];
+  return rows.map(r => {
+    let d = {}; try { d = JSON.parse(r.data); } catch (e) {}
+    const c = d.campaign || {};
+    return { id: r.id, endedAt: r.ended_at, title: c.title || r.id, theme: c.theme || '', participants: d.participants || 0, spins: d.spins || 0, orders: d.orders || 0 };
+  });
+}
+
+// 清空本期工作表(准备下一期)—— 与旧 resetData 相同的表清单
+export async function resetWorkingTables(env) {
+  for (const t of ['members', 'stats', 'prize_counts', 'winners', 'stock', 'sentinels', 'redemptions']) {
+    await env.DB.prepare('DELETE FROM ' + t).run();
+  }
+}
+
+// 客服查:某电话的「跨月永久档案 + 本期实时战绩」
+export async function customerFull(env, phone) {
+  await ensureArchiveTables(env);
+  const np = normPhone(phone); if (!np) return null;
+  const customer = await getCustomer(env, np);
+  const rows = (await env.DB.prepare('SELECT data FROM members WHERE data LIKE ?').bind('%"phone":"' + np + '"%').all()).results || [];
+  let current = null;
+  for (const row of rows) { let m; try { m = JSON.parse(row.data); } catch (e) { continue; } if (m.phone !== np) continue; current = memberResult(m); break; }
+  const camp = await getCampaign(env);
+  return { phone: np, customer, current: current ? { campaignId: camp.id, title: camp.title, ...current } : null };
+}
