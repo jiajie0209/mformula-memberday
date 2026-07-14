@@ -343,6 +343,14 @@ table.help-t tr td:first-child{font-weight:700;background:#faf6ec;white-space:no
 .arv-nums span{display:block;font-size:11px;color:var(--muted);margin-top:2px;}
 .arv-h{font-size:13px;font-weight:800;color:var(--navy);margin:10px 0 4px;}
 .arv-p{font-size:12.5px;color:#3a4a52;line-height:1.7;}
+/* 活动详情整页 */
+#screen-campdetail{padding:16px 16px 30px;}
+.cd-hero{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;}
+.cd-badge{font-size:12px;font-weight:800;color:#4a565d;background:rgba(90,107,116,.14);padding:4px 11px;border-radius:20px;}
+.cd-meta{font-size:12.5px;color:var(--muted);}
+.pz-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);font-size:13.5px;color:var(--ink);}
+.pz-row:last-child{border-bottom:none;}
+.pz-row b{color:var(--navy);font-weight:800;}
 
 /* ====== MFormula 大转盘 — Brand-forward editorial (final) ======
    Machined navy/gold watch bezel, framed product-photo chips,
