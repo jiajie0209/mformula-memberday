@@ -357,6 +357,25 @@ table.help-t tr td:first-child{font-weight:700;background:#faf6ec;white-space:no
 .pause-btn{width:100%;height:46px;border:1.5px solid var(--line);border-radius:12px;background:#fff;color:var(--navy);font-size:14px;font-weight:800;}
 .pause-btn:active{transform:translateY(1px);}
 
+/* ===== 顾客·等待页(活动已结束/没有进行中活动)===== */
+#screen-waiting{padding:0 26px 40px;min-height:100vh;flex-direction:column;justify-content:center;
+  background:radial-gradient(120% 80% at 50% -10%, rgba(20,80,99,.35) 0%, transparent 60%), linear-gradient(170deg,#0E3947 0%,#0a2c37 70%,#082530 100%);}
+#screen-waiting.active{display:flex;}
+#waitBody{text-align:center;animation:mfRise .6s ease both;}
+.wt-badge{display:inline-block;background:linear-gradient(95deg,#F3E0B0,#E9C56B);color:#7a5510;font-size:11px;font-weight:800;letter-spacing:.06em;padding:5px 12px;border-radius:20px;margin-bottom:16px;}
+.wt-hi{font-size:26px;font-weight:900;color:#fff;letter-spacing:.02em;}
+.wt-say{font-size:14px;color:#cfe0dc;margin:14px 0 12px;line-height:1.6;}
+.wt-list{display:flex;flex-direction:column;gap:9px;margin-bottom:8px;}
+.wt-item{background:linear-gradient(100deg,rgba(21,80,99,.5),rgba(14,57,71,.5));border:1px solid rgba(240,197,107,.28);border-radius:14px;padding:12px 15px;text-align:left;}
+.wt-it{font-size:15px;font-weight:800;color:var(--gold-ll);}
+.wt-in{font-size:12.5px;color:#cfe0dc;margin-top:3px;}
+.wt-in b{color:#fff;}
+.wt-next{margin:22px 0 20px;background:rgba(255,255,255,.06);border:1px solid rgba(240,197,107,.25);border-radius:16px;padding:18px 16px;}
+.wt-ne{font-size:30px;}
+.wt-nt{font-size:16px;font-weight:800;color:var(--gold-ll);margin-top:6px;}
+.wt-ns{font-size:12.5px;color:#bcd0cc;margin-top:6px;line-height:1.5;}
+#waitBody .ghost{color:#8fa4a0;}
+
 /* ====== MFormula 大转盘 — Brand-forward editorial (final) ======
    Machined navy/gold watch bezel, framed product-photo chips,
    D2 Safari-safe pointer, glowing dual jackpots, navy auto-double card.
