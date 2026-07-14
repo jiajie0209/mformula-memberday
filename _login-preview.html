@@ -23,14 +23,10 @@
   .sparkle{position:absolute;border-radius:50%;background:#f4d488;box-shadow:0 0 9px 1px rgba(244,212,136,.7);z-index:0;}
 
   /* ===== VIP member emblem ===== */
-  .emblem{text-align:center;margin:2px 0 26px;}
-  .vip{
-    font-family:"Helvetica Neue",Arial,sans-serif;font-size:52px;font-weight:800;letter-spacing:.17em;line-height:1;
-    background:linear-gradient(178deg,#FCF0C6 0%,#F0C56B 34%,#DBA53C 62%,#B07E22 100%);
-    -webkit-background-clip:text;background-clip:text;color:transparent;
-    filter:drop-shadow(0 4px 12px rgba(0,0,0,.4));padding-left:.17em;margin-bottom:8px;
-  }
-  .emblem img{width:252px;height:auto;filter:drop-shadow(0 8px 18px rgba(0,0,0,.4));}
+  .emblem{text-align:center;margin:2px 0 22px;}
+  .medal{width:142px;height:142px;display:block;margin:0 auto 12px;
+    filter:drop-shadow(0 10px 22px rgba(0,0,0,.5)) drop-shadow(0 0 24px rgba(240,197,107,.22));}
+  .emblem img{width:230px;height:auto;filter:drop-shadow(0 8px 18px rgba(0,0,0,.4));}
 
   /* ===== liquid glass card ===== */
   .card{
@@ -82,7 +78,25 @@
 
   <div class="phone">
     <div class="emblem">
-      <div class="vip">VIP</div>
+      <svg class="medal" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-label="VIP">
+        <defs>
+          <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FCEFB8"/><stop offset=".36" stop-color="#F0C56B"/><stop offset=".68" stop-color="#D2A038"/><stop offset="1" stop-color="#9E7A22"/></linearGradient>
+          <linearGradient id="g2" x1="0" y1="0" x2=".4" y2="1"><stop offset="0" stop-color="#FFF6D2"/><stop offset=".28" stop-color="#EFC768"/><stop offset=".52" stop-color="#B8862A"/><stop offset=".76" stop-color="#F3D583"/><stop offset="1" stop-color="#96731f"/></linearGradient>
+          <radialGradient id="core" cx=".5" cy=".4" r=".72"><stop offset="0" stop-color="#20404c"/><stop offset="1" stop-color="#091820"/></radialGradient>
+          <path id="st" d="M0,-9 L2.6,-2.8 L9,-2.8 L3.9,1.1 L5.3,7.3 L0,3.6 L-5.3,7.3 L-3.9,1.1 L-9,-2.8 L-2.6,-2.8 Z"/>
+        </defs>
+        <circle cx="100" cy="100" r="95" fill="url(#g2)"/>
+        <circle cx="100" cy="100" r="83" fill="url(#core)"/>
+        <circle cx="100" cy="100" r="79" fill="none" stroke="url(#g1)" stroke-width="2.4"/>
+        <path d="M100 33 l8 11 10-8 -2.5 17 h-31 l-2.5-17 10 8 z" fill="url(#g1)"/>
+        <use href="#st" fill="url(#g1)" transform="translate(71,76) scale(.72)"/>
+        <use href="#st" fill="url(#g1)" transform="translate(100,69) scale(.92)"/>
+        <use href="#st" fill="url(#g1)" transform="translate(129,76) scale(.72)"/>
+        <text x="101" y="141" text-anchor="middle" font-family="Georgia,'Times New Roman',serif" font-size="58" font-weight="700" fill="url(#g1)" letter-spacing="1">VIP</text>
+        <use href="#st" fill="url(#g1)" transform="translate(85,162) scale(.42)"/>
+        <use href="#st" fill="url(#g1)" transform="translate(100,165) scale(.5)"/>
+        <use href="#st" fill="url(#g1)" transform="translate(115,162) scale(.42)"/>
+      </svg>
       <img src="assets/logo-hero.png" alt="MFORMULA by natureLISH"
         onerror="this.outerHTML='<div style=&quot;font-size:26px;font-weight:900;color:#fff;letter-spacing:2px&quot;>MFORMULA<div style=&quot;font-size:9px;color:#E9C56B;letter-spacing:3px&quot;>by natureLISH</div></div>'">
     </div>
