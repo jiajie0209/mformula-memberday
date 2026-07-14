@@ -592,7 +592,6 @@ const CAMP_ORDER={running:0,preparing:1,planning:2,ended:3};
 function renderCampaigns(){
   const ab=$('addCampBtn'); if(ab) ab.onclick=addCampaignModal;
   const cl=$('campLogout'); if(cl) cl.onclick=logout;
-  const ct=$('campTools'); if(ct) ct.onclick=()=>go('admin');
   const box=$('campBody'); if(box) box.innerHTML='<div class="adm-empty">加载中…</div>';
   loadCampaignList();
 }
@@ -612,37 +611,82 @@ async function loadCampaignList(){
   }).join('');
   box.querySelectorAll('[data-camp]').forEach(b=>b.onclick=()=>openCampaign(b.dataset.camp,b.dataset.status));
 }
-let curDetailId=null;
-function openCampaign(id,status){
-  if(status==='running'){ go('admin'); }                       // 管理正在进行的(现有后台)
-  else if(status==='ended'){ curDetailId=id; go('campdetail'); } // 进入活动详情(整页,不是弹窗)
-  else {                                                        // 草稿:准备中 —— 编辑/启动是第2步;现在可删
-    modal('🛠', id, '这个活动还在<b>准备中</b> 🛠<br>编辑设置 + 启动功能是<b>下一步(第2步)</b>开放。',
-      [{label:'🗑 删除这个草稿', action:async ()=>{ const r=await apiPOST('/api/admin',{action:'deleteCampaign',id}); if(r&&r.ok){ toastModal('已删除'); renderCampaigns(); } else toastModal(r&&r.hint?r.hint:'删除失败'); }},
-       {label:'关闭', sub:true}]);
-  }
-}
+let curDetailId=null, cdData=null;
+function openCampaign(id,status){ curDetailId=id; go('campdetail'); }   // 所有活动都进「完整后台」详情页
 function prizeName(k){ const q=byKey(k); if(!q) return k; if(q.type==='disc') return 'RM'+((q.a&&q.a.value)||'')+'券'; return q.sa||k; }
-async function renderCampDetail(id){                            // 活动详情整页(点某个已结束活动进来)
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+
+async function renderCampDetail(id){                            // 一个活动的完整后台(内容 + 数据 + 查顾客)
   id = id || curDetailId;
   const box=$('campDetailBody'); if(!box) return;
   box.innerHTML='<div class="adm-empty">加载中…</div>';
-  const r=await adminWrite({action:'getCampaignArchive', id});
-  if(!r||!r.ok){ box.innerHTML='<div class="cs-bad">连不上服务器,刷新重试</div>'; return; }
-  const a=r.archive, c=r.campaign||{};
+  const r=await adminWrite({action:'getCampaignFull', id});
+  if(!r||!r.ok){ box.innerHTML='<div class="cs-bad">'+((r&&r.error==='notfound')?'找不到这个活动':'连不上服务器,刷新重试')+'</div>'; return; }
+  cdData=r; const c=r.campaign, cfg=r.config, data=r.data, ed=r.editable;
   if($('cdTitle')) $('cdTitle').textContent = c.title||id;
-  if(!a){ box.innerHTML='<div class="adm-empty">这个活动还没有存档数据。</div>'; return; }
-  const pc=a.prizeCounts||{};
-  const prizeRows=Object.keys(pc).length?Object.entries(pc).sort((x,y)=>y[1]-x[1]).map(([k,n])=>`<div class="pz-row"><span>${prizeName(k)}</span><b>${n} 人</b></div>`).join(''):'<div class="adm-empty">无</div>';
-  const lb=(a.winners||[]).map((w,i)=>`<div class="adm-lb"><span class="r ${i<3?'top':''}">${i+1}</span><span class="nm">${w.name}</span><span class="v">${w.n} 件</span></div>`).join('')||'<div class="adm-empty">无</div>';
-  box.innerHTML=`
-    <div class="cd-hero"><span class="cd-badge">🏁 已结束</span><span class="cd-meta">${id} · ${THEME_LABEL[c.theme]||c.theme} · ${c.start||''} ~ ${c.end||''}</span></div>
-    <div class="adm-stats">
-      <div class="adm-stat"><div class="n">${a.participants||0}</div><div class="l">参与人数</div></div>
-      <div class="adm-stat"><div class="n">${a.spins||0}</div><div class="l">总抽奖</div></div>
-      <div class="adm-stat"><div class="n">${a.orders||0}</div><div class="l">下单数</div></div></div>
-    <div class="adm-card"><div class="adm-h">🎁 各奖中出(多少人抽到)</div>${prizeRows}</div>
-    <div class="adm-card"><div class="adm-h">🏆 中奖最多</div>${lb}</div>`;
+  const bd=CAMP_BADGE[c.status]||['·',''];
+  let h=`<div class="cd-hero"><span class="cd-badge ${bd[1]}">${bd[0]}</span><span class="cd-meta">${id} · ${THEME_LABEL[c.theme]||c.theme} · ${c.start||''}${c.end?(' ~ '+c.end):''}</span></div>`;
+
+  /* ---- 📊 数据(进行中 / 已结束才有)---- */
+  if(data){
+    h+=`<div class="cd-sec">📊 数据</div>
+      <div class="adm-stats">
+        <div class="adm-stat"><div class="n">${data.participants||0}</div><div class="l">参与人数</div></div>
+        <div class="adm-stat"><div class="n">${data.spins||0}</div><div class="l">总抽奖</div></div>
+        <div class="adm-stat"><div class="n">${data.orders||0}</div><div class="l">下单数</div></div></div>`;
+    const pc=data.prizeCounts||{};
+    const pr=Object.keys(pc).length?Object.entries(pc).sort((x,y)=>y[1]-x[1]).map(([k,n])=>`<div class="pz-row"><span>${prizeName(k)}</span><b>${n} 人</b></div>`).join(''):'<div class="adm-empty">还没有</div>';
+    const lb=(data.winners||[]).map((w,i)=>`<div class="adm-lb"><span class="r ${i<3?'top':''}">${i+1}</span><span class="nm">${w.name}</span><span class="v">${w.n} 件</span></div>`).join('')||'<div class="adm-empty">还没有</div>';
+    h+=`<div class="adm-card"><div class="adm-h">🎁 各奖中出(多少人抽到)</div>${pr}</div>`;
+    h+=`<div class="adm-card"><div class="adm-h">🏆 中奖最多</div>${lb}</div>`;
+    h+=`<div class="adm-card"><div class="adm-h">🔎 查顾客(输电话查)</div>
+      <div class="code-add"><input id="findPhone" placeholder="顾客电话 如 0123456789" inputmode="tel"><button id="findBtn">查</button></div>
+      <div id="findResult"></div>
+      <div class="adm-note">输入电话 → 看他的会员档案 + 抽中/下单了什么。</div></div>`;
+  }
+
+  /* ---- 📋 内容 / 设置 ---- */
+  h+=`<div class="cd-sec">📋 内容(设置)</div>`;
+  const wlist=WHEEL.map(p=>{ const w=(cfg.weights&&cfg.weights[p.key])||0; const nm=p.sa===p.sb?p.sa:`${p.sa}/${p.sb}`;
+    return ed ? `<div class="w-row"><span class="wn">${p.emoji} ${nm}</span><input class="w-in" type="number" min="0" step="0.5" value="${w}" data-cdw="${p.key}"></div>`
+              : `<div class="w-row"><span class="wn">${p.emoji} ${nm}</span><span class="wp">${w}</span></div>`; }).join('');
+  h+=`<div class="adm-card"><div class="adm-h">🎲 中奖概率${ed?'':' (只读)'}</div>${wlist}${ed?'<button id="cdSaveW" class="lead-btn" style="margin-top:9px">💾 保存概率</button>':''}<div class="adm-note">数字=权重,越大越容易中,<b>0=永不中</b>。</div></div>`;
+  const codesObj=cfg.codes||{};
+  const codeList=Object.keys(codesObj).length?Object.entries(codesObj).map(([cc,n])=>`<div class="code-row"><span class="cc">${cc}</span><span class="cn">+${n}次</span>${ed?`<button class="code-del" data-cddel="${cc}">✕</button>`:''}</div>`).join(''):'<div class="adm-empty">没有码</div>';
+  h+=`<div class="adm-card"><div class="adm-h">🎁 兑换码</div>${codeList}${ed?`<div class="code-add"><input id="cdNewCode" placeholder="新码 BONUS10" autocapitalize="characters"><input id="cdNewN" type="number" inputmode="numeric" placeholder="次数" min="1" max="99"><button id="cdAddCode">+加</button></div>`:''}</div>`;
+  h+=`<div class="adm-card"><div class="adm-h">✏️ 消息模板</div>
+    <div class="msg-lbl">🆘 补救消息(好礼过期时)</div>${ed?`<textarea id="cdMsgR" class="msg-ta" rows="7"></textarea>`:`<div class="arv-p">${esc(cfg.msgRecover)||'(用默认模板)'}</div>`}
+    <div class="msg-lbl">🎁 正常消息</div>${ed?`<textarea id="cdMsgO" class="msg-ta" rows="5"></textarea>`:`<div class="arv-p">${esc(cfg.msgOrder)||'(用默认模板)'}</div>`}
+    ${ed?'<button id="cdSaveMsg" class="lead-btn" style="margin-top:9px">💾 保存消息</button>':''}</div>`;
+
+  /* ---- 🎛 控制 ---- */
+  if(c.status==='running'){
+    h+=`<div class="cd-sec">🎛 控制</div><div class="adm-card"><button id="cdEnd" class="danger-btn">🔚 结束这个活动并归档</button><div class="adm-note">结束后:成绩永久存档 + 写进每位顾客档案,顾客那边停止。数据不会丢。</div></div>`;
+  } else if(c.status==='planning'||c.status==='preparing'){
+    h+=`<div class="cd-sec">🎛 控制</div><div class="adm-card"><button id="cdLaunch" class="launch-btn">▶️ 启动这个活动</button><button id="cdDelDraft" class="ghost" style="margin-top:9px;width:100%;text-align:center">🗑 删除这个草稿</button><div class="adm-note">启动后:这个活动变「进行中」,顾客打开 app 就玩它(若有别的进行中,会先自动结束归档)。</div></div>`;
+  }
+
+  box.innerHTML=h;
+  const fb=$('findBtn'); if(fb) fb.onclick=findMember;
+  if(ed){
+    const sw=$('cdSaveW'); if(sw) sw.onclick=async ()=>{ const w={}; document.querySelectorAll('[data-cdw]').forEach(inp=>{ const v=parseFloat(inp.value); w[inp.dataset.cdw]=(isFinite(v)&&v>=0)?v:0; }); const rr=await apiPOST('/api/admin',{action:'setCampaignConfig',id,patch:{weights:w}}); toastModal(rr&&rr.ok?'✅ 概率已保存':'保存失败'); };
+    const ac=$('cdAddCode'); if(ac) ac.onclick=async ()=>{ const code=($('cdNewCode').value||'').trim().toUpperCase(), n=parseInt($('cdNewN').value,10); if(!code||!(n>0)){ toastModal('填码和次数 🙂'); return; } const codes={...(cdData.config.codes||{}),[code]:n}; const rr=await apiPOST('/api/admin',{action:'setCampaignConfig',id,patch:{codes}}); if(rr&&rr.ok){ toastModal('✅ 已加'); renderCampDetail(id); } else toastModal('失败'); };
+    document.querySelectorAll('[data-cddel]').forEach(b=>b.onclick=async ()=>{ const codes={...(cdData.config.codes||{})}; delete codes[b.dataset.cddel]; const rr=await apiPOST('/api/admin',{action:'setCampaignConfig',id,patch:{codes}}); if(rr&&rr.ok){ renderCampDetail(id); } else toastModal('失败'); });
+    if($('cdMsgR')) $('cdMsgR').value=cdData.config.msgRecover||'';
+    if($('cdMsgO')) $('cdMsgO').value=cdData.config.msgOrder||'';
+    const sm=$('cdSaveMsg'); if(sm) sm.onclick=async ()=>{ const rr=await apiPOST('/api/admin',{action:'setCampaignConfig',id,patch:{msgRecover:$('cdMsgR').value,msgOrder:$('cdMsgO').value}}); toastModal(rr&&rr.ok?'✅ 消息已保存':'保存失败'); };
+  }
+  const lc=$('cdLaunch'); if(lc) lc.onclick=()=>launchCampaignUI(c);
+  const dd=$('cdDelDraft'); if(dd) dd.onclick=async ()=>{ const rr=await apiPOST('/api/admin',{action:'deleteCampaign',id}); if(rr&&rr.ok){ toastModal('已删除'); go('campaigns'); } else toastModal(rr&&rr.hint?rr.hint:'删除失败'); };
+  const en=$('cdEnd'); if(en) en.onclick=()=>endCampaignUI(c);
+}
+function launchCampaignUI(c){
+  modal('▶️','启动活动',`确定把 <b>${c.title||c.id}</b> 设为<b>进行中</b>?<br><br>顾客打开 app 就会玩这个活动。<b>若现在有别的活动进行中,会先自动结束+归档它。</b>`,
+    [{label:'确定启动',action:async ()=>{ const r=await apiPOST('/api/admin',{action:'launchCampaign',id:c.id}); if(r&&r.ok){ toastModal('🎬 已启动!'); go('campaigns'); } else toastModal(r&&r.hint?r.hint:'启动失败'); }},{label:'取消',sub:true}]);
+}
+function endCampaignUI(c){
+  modal('🔚','结束活动',`确定<b>结束并归档</b> ${c.title||c.id}?<br><br>成绩会永久存档 + 写进每位顾客档案,顾客那边停止。<b>数据不会丢。</b>`,
+    [{label:'确定结束',action:async ()=>{ const r=await apiPOST('/api/admin',{action:'endCampaign',id:c.id}); if(r&&r.ok){ toastModal('🏁 已结束归档'); go('campaigns'); } else toastModal(r&&r.hint?r.hint:'失败'); }},{label:'取消',sub:true}]);
 }
 function addCampaignModal(){
   modal('➕','增加活动',

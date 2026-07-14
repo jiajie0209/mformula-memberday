@@ -143,6 +143,82 @@ export async function onRequestPost({ request, env }) {
       return json({ ok: true, deleted: id });
     }
 
+    /* ===== 阶段B:一个活动的完整后台(内容+数据) + 编辑 + 启动/结束 ===== */
+    if (action === 'getCampaignFull') {   // 某活动的全部:登记信息 + 设置 + 数据
+      const id = String(body.id || '').trim().toUpperCase();
+      const reg = await getCampaignReg(env, id);
+      if (!reg) return json({ ok: false, error: 'notfound' });
+      const liveId = await kvGet(env, 'live_campaign');
+      const isLive = reg.id === liveId || reg.status === 'running';
+      let config, data = null, editable = false;
+      if (reg.status === 'ended') { config = reg.config || {}; const a = await getArchive(env, reg.archiveId || reg.id); if (a) data = { participants: a.participants, spins: a.spins, orders: a.orders, prizeCounts: a.prizeCounts, winners: a.winners }; }
+      else if (isLive) { config = await loadConfig(env); const s = await loadStats(env); data = { participants: s.participants, spins: s.spins, orders: s.orders, prizeCounts: s.prizeCounts, winners: s.winners }; editable = true; }
+      else { config = reg.config || {}; editable = true; }   // 草稿
+      return json({ ok: true, campaign: { id: reg.id, title: reg.title, theme: reg.theme, status: reg.status, start: reg.start, end: reg.end, isLive }, config: { weights: config.weights || {}, codes: config.codes || {}, msgOrder: config.msgOrder || '', msgRecover: config.msgRecover || '' }, data, editable });
+    }
+    if (action === 'setCampaignConfig') {   // 编辑草稿或正在进行的活动设置(正在进行 → 写实时镜像)
+      const id = String(body.id || '').trim().toUpperCase();
+      const reg = await getCampaignReg(env, id);
+      if (!reg) return json({ ok: false, error: 'notfound' });
+      if (reg.status === 'ended') return json({ ok: false, error: 'ended_readonly', hint: '已结束的活动不能改设置。' });
+      const isLive = reg.id === (await kvGet(env, 'live_campaign'));
+      const base = isLive ? await loadConfig(env) : Object.assign(JSON.parse(JSON.stringify(DEFAULT_CONFIG)), reg.config || {});
+      const p = body.patch || {};
+      if (p.weights && typeof p.weights === 'object') base.weights = clampWeights(p.weights, base.weights);
+      if (p.codes && typeof p.codes === 'object') base.codes = p.codes;
+      if (typeof p.msgOrder === 'string') base.msgOrder = p.msgOrder;
+      if (typeof p.msgRecover === 'string') base.msgRecover = p.msgRecover;
+      if (typeof body.title === 'string' && body.title.trim()) reg.title = body.title.trim();
+      if (typeof body.theme === 'string' && body.theme) reg.theme = body.theme;
+      if (isLive) await saveConfig(env, base);              // 顾客即时生效
+      reg.config = base; reg.updatedAt = Date.now();
+      await putCampaignReg(env, reg);
+      return json({ ok: true });
+    }
+    if (action === 'launchCampaign') {   // 草稿 → 进行中:先结束当前进行中的(归档),再用这个活动的设置整体覆盖镜像
+      const id = String(body.id || '').trim().toUpperCase();
+      const reg = await getCampaignReg(env, id);
+      if (!reg) return json({ ok: false, error: 'notfound' });
+      if (reg.status === 'ended') return json({ ok: false, error: 'ended', hint: '已结束的活动不能再启动。' });
+      if (reg.theme && reg.theme !== 'wheel') return json({ ok: false, error: 'theme_not_ready', hint: '这个游戏(' + reg.theme + ')还没做好 —— 做好游戏才能启动(刮刮乐是第3步)。' });
+      const liveId = await kvGet(env, 'live_campaign');
+      if (liveId === id) return json({ ok: false, error: 'already_live', hint: '这个活动已经在进行中了。' });
+      if (liveId) {                                          // 先结束当前进行中的
+        const cur = await getCampaignReg(env, liveId);
+        const archKey = (cur && (cur.archiveId || cur.id)) || liveId;
+        if (!(await getArchive(env, archKey))) {
+          const st = await loadStats(env); const memRow = await env.DB.prepare('SELECT COUNT(*) AS n FROM members').first(); const memCount = (memRow && memRow.n) || 0;
+          if (memCount > 0 || (st.participants || 0) > 0) { const cc = cur ? { id: archKey, title: cur.title, theme: cur.theme, start: cur.start, end: cur.end } : { id: archKey, title: liveId, theme: 'wheel' }; await archiveCampaign(env, cc); await rollupCustomers(env, cc); }
+        }
+        await resetWorkingTables(env);
+        if (cur) { cur.status = 'ended'; cur.updatedAt = Date.now(); await putCampaignReg(env, cur); }
+      }
+      const cfg = Object.assign(JSON.parse(JSON.stringify(DEFAULT_CONFIG)), reg.config || {});   // 整体覆盖(不是补丁)
+      cfg.status = 'running'; cfg.activityStart = reg.start; cfg.serverDraws = true;
+      await saveConfig(env, cfg);
+      await setCampaign(env, { id: reg.id, title: reg.title, theme: reg.theme, start: reg.start, end: reg.end });
+      await kvSet(env, 'live_campaign', reg.id);
+      reg.status = 'running'; reg.config = cfg; reg.updatedAt = Date.now(); await putCampaignReg(env, reg);
+      return json({ ok: true, launched: reg.id });
+    }
+    if (action === 'endCampaign') {   // 结束并归档(进行中 → 已结束);空活动不报错
+      const id = String(body.id || '').trim().toUpperCase();
+      const reg = await getCampaignReg(env, id);
+      if (!reg) return json({ ok: false, error: 'notfound' });
+      const liveId = await kvGet(env, 'live_campaign');
+      if (reg.id !== liveId && reg.status !== 'running') return json({ ok: false, error: 'not_running', hint: '这个活动不是进行中,不能结束。' });
+      const archKey = reg.archiveId || reg.id;
+      if (!(await getArchive(env, archKey))) {
+        const st = await loadStats(env); const memRow = await env.DB.prepare('SELECT COUNT(*) AS n FROM members').first(); const memCount = (memRow && memRow.n) || 0;
+        if (memCount > 0 || (st.participants || 0) > 0) { const cc = { id: archKey, title: reg.title, theme: reg.theme, start: reg.start, end: reg.end }; await archiveCampaign(env, cc); await rollupCustomers(env, cc); }
+      }
+      await resetWorkingTables(env);
+      reg.status = 'ended'; reg.updatedAt = Date.now(); await putCampaignReg(env, reg);
+      await kvSet(env, 'live_campaign', null);
+      const cfg = await loadConfig(env); cfg.status = 'closed'; await saveConfig(env, cfg);
+      return json({ ok: true, ended: id });
+    }
+
     /* ===== 阶段1:主题期(campaign)+ 永久档案 + 存档 ===== */
     if (action === 'getCampaign') return json({ ok: true, campaign: await getCampaign(env) });
     if (action === 'listArchives') return json({ ok: true, archives: await listArchives(env) });
