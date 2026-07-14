@@ -34,19 +34,38 @@
 
     <!-- ============ 登入 ============ -->
     <section class="screen active" id="screen-login">
-      <div class="login-logo"><img src="assets/logo-white.png" alt="MFormula by natureLISH"></div>
-      <div class="login-countdown" id="loginCountdown">
-        <div class="lcd-label" id="loginCdLabel">⏳ 会员日倒数 · 距活动结束</div>
-        <div class="lcd-time" id="loginCdTime">—</div>
+      <span class="lg-spark" style="width:5px;height:5px;top:118px;left:30px"></span>
+      <span class="lg-spark" style="width:4px;height:4px;top:80px;right:36px;opacity:.5"></span>
+      <span class="lg-spark" style="width:3px;height:3px;top:180px;right:22px;opacity:.6"></span>
+      <div class="lg-emblem">
+        <svg class="lg-medal" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="VIP">
+          <defs>
+            <linearGradient id="lgG1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FCEFB8"/><stop offset=".36" stop-color="#F0C56B"/><stop offset=".68" stop-color="#D2A038"/><stop offset="1" stop-color="#9E7A22"/></linearGradient>
+            <linearGradient id="lgG2" x1="0" y1="0" x2=".4" y2="1"><stop offset="0" stop-color="#FFF6D2"/><stop offset=".28" stop-color="#EFC768"/><stop offset=".52" stop-color="#B8862A"/><stop offset=".76" stop-color="#F3D583"/><stop offset="1" stop-color="#96731f"/></linearGradient>
+            <radialGradient id="lgCore" cx=".5" cy=".4" r=".72"><stop offset="0" stop-color="#20404c"/><stop offset="1" stop-color="#091820"/></radialGradient>
+            <path id="lgSt" d="M0,-9 L2.6,-2.8 L9,-2.8 L3.9,1.1 L5.3,7.3 L0,3.6 L-5.3,7.3 L-3.9,1.1 L-9,-2.8 L-2.6,-2.8 Z"/>
+          </defs>
+          <circle cx="100" cy="100" r="95" fill="url(#lgG2)"/>
+          <circle cx="100" cy="100" r="83" fill="url(#lgCore)"/>
+          <circle cx="100" cy="100" r="79" fill="none" stroke="url(#lgG1)" stroke-width="2.4"/>
+          <path d="M100 33 l8 11 10-8 -2.5 17 h-31 l-2.5-17 10 8 z" fill="url(#lgG1)"/>
+          <use href="#lgSt" fill="url(#lgG1)" transform="translate(71,76) scale(.72)"/>
+          <use href="#lgSt" fill="url(#lgG1)" transform="translate(100,69) scale(.92)"/>
+          <use href="#lgSt" fill="url(#lgG1)" transform="translate(129,76) scale(.72)"/>
+          <text x="101" y="141" text-anchor="middle" font-family="Georgia,'Times New Roman',serif" font-size="58" font-weight="700" fill="url(#lgG1)" letter-spacing="1">VIP</text>
+          <use href="#lgSt" fill="url(#lgG1)" transform="translate(85,162) scale(.42)"/>
+          <use href="#lgSt" fill="url(#lgG1)" transform="translate(100,165) scale(.5)"/>
+          <use href="#lgSt" fill="url(#lgG1)" transform="translate(115,162) scale(.42)"/>
+        </svg>
+        <div class="lg-div"></div>
+        <img class="lg-logo" src="assets/logo-hero.png" alt="MFORMULA by natureLISH">
       </div>
-      <div class="login-card">
-        <div class="login-badge">★ 老顾客专属</div>
-        <div class="login-title"><h1>会员登入</h1></div>
-        <div class="login-sub">Member Day 老顾客专属 · 填名字 + 电话即可进入</div>
-        <label class="lf"><span>姓名</span><input id="loginName" type="text" placeholder="您的姓名"></label>
-        <label class="lf"><span>电话号码</span><input id="loginPhone" type="tel" inputmode="tel" placeholder="012-345 6789"></label>
+      <div class="lg-card">
+        <div class="lg-hrow"><h1>会员登入</h1><span class="lg-tag">★ 老顾客专属</span></div>
+        <div class="lg-sub">填名字 + 电话即可进入</div>
+        <label class="lg-inp"><span class="lg-i"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg></span><input id="loginName" type="text" placeholder="您的姓名"></label>
+        <label class="lg-inp"><span class="lg-i"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L20 13l1 4v3a1 1 0 0 1-1 1A16 16 0 0 1 4 5a1 1 0 0 1 1-1z"/></svg></span><input id="loginPhone" type="tel" inputmode="tel" placeholder="012-345 6789"></label>
         <button id="loginBtn">进入活动 →</button>
-        <div class="login-note">🔒 资料仅用于本次会员日活动</div>
       </div>
     </section>
 
