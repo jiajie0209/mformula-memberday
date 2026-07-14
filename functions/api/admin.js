@@ -154,7 +154,7 @@ export async function onRequestPost({ request, env }) {
       if (reg.status === 'ended') { config = reg.config || {}; const a = await getArchive(env, reg.archiveId || reg.id); if (a) data = { participants: a.participants, spins: a.spins, orders: a.orders, prizeCounts: a.prizeCounts, winners: a.winners }; }
       else if (isLive) { config = await loadConfig(env); const s = await loadStats(env); data = { participants: s.participants, spins: s.spins, orders: s.orders, prizeCounts: s.prizeCounts, winners: s.winners }; editable = true; }
       else { config = reg.config || {}; editable = true; }   // 草稿
-      return json({ ok: true, campaign: { id: reg.id, title: reg.title, theme: reg.theme, status: reg.status, start: reg.start, end: reg.end, isLive }, config: { weights: config.weights || {}, codes: config.codes || {}, msgOrder: config.msgOrder || '', msgRecover: config.msgRecover || '' }, data, editable });
+      return json({ ok: true, campaign: { id: reg.id, title: reg.title, theme: reg.theme, status: reg.status, start: reg.start, end: reg.end, isLive, serveStatus: isLive ? (config.status || 'running') : null }, config: { weights: config.weights || {}, codes: config.codes || {}, msgOrder: config.msgOrder || '', msgRecover: config.msgRecover || '' }, data, editable });
     }
     if (action === 'setCampaignConfig') {   // 编辑草稿或正在进行的活动设置(正在进行 → 写实时镜像)
       const id = String(body.id || '').trim().toUpperCase();
@@ -183,14 +183,16 @@ export async function onRequestPost({ request, env }) {
       if (reg.theme && reg.theme !== 'wheel') return json({ ok: false, error: 'theme_not_ready', hint: '这个游戏(' + reg.theme + ')还没做好 —— 做好游戏才能启动(刮刮乐是第3步)。' });
       const liveId = await kvGet(env, 'live_campaign');
       if (liveId === id) return json({ ok: false, error: 'already_live', hint: '这个活动已经在进行中了。' });
-      if (liveId) {                                          // 先结束当前进行中的
+      if (liveId) {                                          // 先结束当前进行中的(归档)
         const cur = await getCampaignReg(env, liveId);
         const archKey = (cur && (cur.archiveId || cur.id)) || liveId;
-        if (!(await getArchive(env, archKey))) {
-          const st = await loadStats(env); const memRow = await env.DB.prepare('SELECT COUNT(*) AS n FROM members').first(); const memCount = (memRow && memRow.n) || 0;
-          if (memCount > 0 || (st.participants || 0) > 0) { const cc = cur ? { id: archKey, title: cur.title, theme: cur.theme, start: cur.start, end: cur.end } : { id: archKey, title: liveId, theme: 'wheel' }; await archiveCampaign(env, cc); await rollupCustomers(env, cc); }
+        const cc = cur ? { id: archKey, title: cur.title, theme: cur.theme, start: cur.start, end: cur.end } : { id: archKey, title: liveId, theme: 'wheel' };
+        const st = await loadStats(env); const memRow = await env.DB.prepare('SELECT COUNT(*) AS n FROM members').first(); const memCount = (memRow && memRow.n) || 0;
+        if (memCount > 0 || (st.participants || 0) > 0) {
+          if (!(await getArchive(env, archKey))) await archiveCampaign(env, cc);   // 存档只做一次(不零覆盖)
+          await rollupCustomers(env, cc);                                          // 幂等,永远跑 → 半途失败重跑也不丢顾客
         }
-        await resetWorkingTables(env);
+        await resetWorkingTables(env);                                            // 前面成功了才清空
         if (cur) { cur.status = 'ended'; cur.updatedAt = Date.now(); await putCampaignReg(env, cur); }
       }
       const cfg = Object.assign(JSON.parse(JSON.stringify(DEFAULT_CONFIG)), reg.config || {});   // 整体覆盖(不是补丁)
@@ -208,9 +210,11 @@ export async function onRequestPost({ request, env }) {
       const liveId = await kvGet(env, 'live_campaign');
       if (reg.id !== liveId && reg.status !== 'running') return json({ ok: false, error: 'not_running', hint: '这个活动不是进行中,不能结束。' });
       const archKey = reg.archiveId || reg.id;
-      if (!(await getArchive(env, archKey))) {
-        const st = await loadStats(env); const memRow = await env.DB.prepare('SELECT COUNT(*) AS n FROM members').first(); const memCount = (memRow && memRow.n) || 0;
-        if (memCount > 0 || (st.participants || 0) > 0) { const cc = { id: archKey, title: reg.title, theme: reg.theme, start: reg.start, end: reg.end }; await archiveCampaign(env, cc); await rollupCustomers(env, cc); }
+      const st = await loadStats(env); const memRow = await env.DB.prepare('SELECT COUNT(*) AS n FROM members').first(); const memCount = (memRow && memRow.n) || 0;
+      if (memCount > 0 || (st.participants || 0) > 0) {
+        const cc = { id: archKey, title: reg.title, theme: reg.theme, start: reg.start, end: reg.end };
+        if (!(await getArchive(env, archKey))) await archiveCampaign(env, cc);   // 存档只做一次
+        await rollupCustomers(env, cc);                                          // 幂等,永远跑 → 防半途丢顾客
       }
       await resetWorkingTables(env);
       reg.status = 'ended'; reg.updatedAt = Date.now(); await putCampaignReg(env, reg);
