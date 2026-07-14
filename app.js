@@ -171,12 +171,14 @@ function enterPreview(){
   S = { name:'预览', phone:'', loggedIn:true, admin:false, day:1, chances:99, won:[], wonAt:{}, bundle:[], pickPkg:'2box', codes:{}, usedCodes:[] };
   previewMode = true;
   const pb=$('previewBar'); if(pb) pb.style.display='flex';
+  const cb=$('countdownBar'); if(cb) cb.style.display='none';   // 预览里不显示「已结束」倒数条,避免矛盾
   go('home');
 }
 function exitPreview(){
   previewMode = false;
   if(_savedAdminS) S = _savedAdminS; _savedAdminS = null;
   const pb=$('previewBar'); if(pb) pb.style.display='none';
+  const cb=$('countdownBar'); if(cb) cb.style.display='';
   go('campdetail');
 }
 
