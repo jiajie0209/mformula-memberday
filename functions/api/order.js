@@ -2,7 +2,7 @@
 import { parseSession, loadConfig, casMember, chancesOf, dayInfo, computeOrder, redeemExpired, ULTRA, SLOTS, bumpStats, saveRedemption, sha256Hex, json } from './_lib.js';
 
 async function orderCode(env, pkg, mid, sig) {
-  const p = pkg === '4box' ? '4B' : '2B';
+  const p = pkg === '6box' ? '6B' : pkg === '4box' ? '4B' : '2B';
   const h = await sha256Hex((env.SESSION_SECRET || '') + '|' + mid + '|' + sig);
   const n = parseInt(h.slice(0, 8), 16) % 1000000;
   return `MD-${p}-${String(n).padStart(6, '0')}`;
@@ -13,7 +13,7 @@ export async function onRequestPost({ request, env }) {
     const id = await parseSession(env, request);
     if (!id) return json({ ok: false, reason: 'nosession' }, 401);
     const body = await request.json().catch(() => ({}));
-    const pkg = (body.pkg === '4box') ? '4box' : '2box';
+    const pkg = ['2box', '4box', '6box'].includes(body.pkg) ? body.pkg : '2box';
     const wanted = Array.isArray(body.bundle) ? [...new Set(body.bundle.map(String))] : [];   // 去重:防一张券重复算多次折扣
     const cfg = await loadConfig(env); const { todayKey } = dayInfo(cfg);
     if (cfg.status !== 'running') return json({ ok: false, reason: 'notrunning', status: cfg.status });   // 活动暂停/结束/关闭时不收单(与抽奖一致)

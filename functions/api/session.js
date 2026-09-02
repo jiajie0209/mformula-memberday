@@ -27,7 +27,7 @@ export async function onRequestPost({ request, env }) {
         }
         m.days[todayKey] = { granted: grant, used: 0 };
       }
-      if (body.pkg === '2box' || body.pkg === '4box') m.pkg = body.pkg;
+      if (body.pkg === '2box' || body.pkg === '4box' || body.pkg === '6box') m.pkg = body.pkg;
       return m;
     });
     if (isNew) { try { await bumpStats(env, { participants: 1 }); } catch (e) {} }   // 统计尽力

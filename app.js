@@ -22,10 +22,11 @@ const drawsForDay = d => CONFIG.DAY_DRAWS[Math.min(Math.max(d|0,1),CONFIG.DAY_DR
 // 大马手机号校验(对齐服务器 normPhone:去 60/0 前缀后须 1xxxxxxxx)
 function myPhone(p){ let d=String(p||'').replace(/\D/g,''); if(d.startsWith('60')) d=d.slice(2); if(d.startsWith('0')) d=d.slice(1); return /^1[0-9]{8,9}$/.test(d) ? d : null; }
 
-// 配套(固定价) slots = 这单能带几件好礼
+// 配套(固定价) slots = 这单能带几件好礼;variant a=基础 b=翻倍;ticket=下单消息里显示的抽奖券(另一个系统单独算)
 const PACKAGES = [
-  { key:'2box', name:'2 Boxes 配套', price:358, boxes:2, slots:2 },
-  { key:'4box', name:'4 Boxes 配套', price:716, boxes:4, slots:3 },
+  { key:'2box', name:'2 Boxes 配套', price:358, boxes:2, slots:2, variant:'a', ticket:'🎟️ 普通抽奖券 ×2' },
+  { key:'4box', name:'4 Boxes 配套', price:716, boxes:4, slots:3, variant:'b', ticket:'🎟️ 普通抽奖券 ×4' },
+  { key:'6box', name:'6 Boxes 配套', price:1074, boxes:6, slots:4, variant:'b', ticket:'🎟️ VIP抽奖券 ×16' },
 ];
 
 // 大转盘奖品。a=2 Boxes(配套A,基础); b=4 Boxes(配套B,自动翻倍)
@@ -48,11 +49,12 @@ const byKey = k => WHEEL.find(p=>p.key===k);        // 注意:查的是全量 WH
 const isUltra = k => { const p=byKey(k); return p && p.type==='ultra'; };
 const isDisc  = k => { const p=byKey(k); return p && p.type==='disc'; };
 const prizeLimit = () => curPkg().slots;
-const pv = p => (S.pickPkg==='4box' ? p.b : p.a);          // 按配套取 A/B
+const pkgB = () => (curPkg().variant === 'b');             // 当前配套是否用「翻倍(B)」奖品(4盒/6盒)
+const pv = p => (pkgB() ? p.b : p.a);                      // 按配套取 A/B
 const wonLabel = k => { const p=byKey(k); return p ? pv(p).label : ''; };
 const wonImg = k => { const p=byKey(k); if(!p) return ''; return pv(p).img || p.img; };
 const wonVal = k => { const p=byKey(k); return (p && pv(p).value) || 0; };
-const wheelShort = p => (S.pickPkg==='4box' ? p.sb : p.sa);
+const wheelShort = p => (pkgB() ? p.sb : p.sa);
 
 // 中奖权重(管理员后台可改);真实概率 = 权重 / 总和。0 = 永不中
 const DEFAULT_WEIGHTS = { v5:22, v10:14, v30:5, v50:1, g5:18, g10:12, g15:5, tumbler:10, duffle:6, free:0.5, gold:0 };
@@ -304,7 +306,7 @@ function renderReturnHint(){          // 大厅常驻:今天抽完别走,明天�
 let wheelRot = 0, spinning = false;
 function segChip(p){   // 转盘每格的内容:折扣券=金币券; 其它=真实产品图
   if(p.type==='disc') return { chip:`<i class="wchip wcoupon">${wheelShort(p)}</i>`, label:'折扣券' };
-  const im = (S.pickPkg==='4box' ? (p.b.img||p.img) : (p.a.img||p.img));
+  const im = (pkgB() ? (p.b.img||p.img) : (p.a.img||p.img));
   return { chip:`<i class="wchip"><img src="assets/${im}" alt="" onerror="this.parentNode.textContent='${p.emoji}'"></i>`, label:wheelShort(p) };
 }
 function buildWheel(el){
@@ -395,7 +397,7 @@ function showWinModal(key){
   const p=byKey(key); const im=wonImg(key);
   const img = im ? `<img src="assets/${im}" alt="" onerror="this.replaceWith(document.createTextNode('${p.emoji}'))">` : p.emoji;
   const scales = JSON.stringify(p.a)!==JSON.stringify(p.b);
-  const canUpsell = scales && p.type!=='ultra' && S.pickPkg!=='4box';   // 还没选4盒 → 当场一键升级(峰值情绪转化)
+  const canUpsell = scales && p.type!=='ultra' && !pkgB();   // 还在基础(2盒)→ 当场一键升级到翻倍(峰值情绪转化)
   let extra, btns;
   if(canUpsell){
     const saveLine = p.type==='disc' ? `<div class="m-upsave">等于再省 RM${(p.b.value||0)-(p.a.value||0)}!</div>` : '';
@@ -594,13 +596,14 @@ $('waBtn') && $('waBtn').addEventListener('click', async ()=>{
 ━━━━━━━━━━
 👤 会员：${S.name}（${S.phone}）
 📦 配套：${pkg.name} — 原价 RM${pkg.price}
+${pkg.ticket}
 🎁 抽中带上（${bundleKeys.length}）：
 ${rewardsTxt}
 💰 应付：${payTxt}${savedAmt>0?`\n🎉 这单帮我省了 RM${savedAmt}`:''}${upsellLine}
 🧾 兑换码：${code}
 ━━━━━━━━━━
 我知道客服会先核对配套和兑换码,确认后才发货 🙏
-(兑换码一次性有效 · 活动 1/7–7/7)`;
+(兑换码一次性有效)`;
   const url = `https://wa.me/${CONFIG.WHATSAPP}?text=${encodeURIComponent(msg)}`;
   modalRaw(
     `<div class="m-name" style="font-size:18px">确认下单</div>
@@ -617,7 +620,7 @@ ${rewardsTxt}
 });
 function genCode(sig, pkgKey){
   if(S.codes[sig]) return S.codes[sig];
-  const p = pkgKey==='4box'?'4B':'2B';
+  const p = pkgKey==='6box'?'6B':pkgKey==='4box'?'4B':'2B';
   const n = Math.floor(100000+Math.random()*900000);
   const code = `MD-${p}-${n}`;
   S.codes[sig]=code; save();
@@ -1044,9 +1047,9 @@ function renderHelp(){
     <div class="help-h">公平说明</div>
     <div class="help-p">转盘中奖完全由系统<b>随机</b>抽出,<b>每个人机会都一样</b>,不会因为你是谁而改变。免单和 999 足金是<b>真奖品</b>,只是数量极少、纯凭运气 🍀。</div>
     <div class="help-h">抽奖次数(每天不同)</div>
-    <div class="help-p"><b>第 1 天 5 次</b> · 第 2–6 天每天 1 次 · <b>第 7 天 3 次</b>。今天用完了 —— <b>输入兑换码</b>或<b>下单 +${CONFIG.ORDER_BONUS}</b> 立刻继续,明天回来还有免费次数。</div>
+    <div class="help-p"><b>第 1 天 5 次</b> · 之后每天 1 次 · <b>最后一天 3 次</b>。今天用完了 —— <b>输入兑换码</b>或<b>下单</b>立刻继续,明天回来还有免费次数。</div>
     <div class="help-h">好礼 24 小时内兑换</div>
-    <div class="help-p">抽中的好礼会<b>倒数 24 小时</b>,请在失效前联系客服兑换,过期作废。活动 1/7–7/7。</div>`;
+    <div class="help-p">抽中的好礼会<b>倒数 24 小时</b>,请在失效前联系客服兑换,过期作废。</div>`;
 }
 
 /* ---------------- 弹窗 ---------------- */

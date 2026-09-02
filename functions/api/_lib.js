@@ -27,8 +27,8 @@ export const BUILTIN_CODES = {};   // 不再内置永久码;全部由管理员�
 export const WHEEL_KEYS = ['v5', 'v10', 'v30', 'v50', 'g5', 'g10', 'g15', 'tumbler', 'duffle', 'free', 'gold'];
 export const ULTRA = new Set(['free', 'gold']);
 export const STOCK_DEFAULT = { tumbler: 30, duffle: 12, free: 3, gold: 1 };
-export const PKG_PRICE = { '2box': 358, '4box': 716 };
-export const SLOTS = { '2box': 2, '4box': 3 };
+export const PKG_PRICE = { '2box': 358, '4box': 716, '6box': 1074 };
+export const SLOTS = { '2box': 2, '4box': 3, '6box': 4 };
 export const DISC = { v5: [5, 10], v10: [10, 20], v30: [30, 60], v50: [50, 100] };
 export const idxOf = k => WHEEL_KEYS.indexOf(k);
 
@@ -226,7 +226,7 @@ export function redeemExpired(member, key, redeemMs) { const t = member.wonAt &&
 export function computeOrder(pkg, bundle) {
   const price = PKG_PRICE[pkg] || PKG_PRICE['2box'];
   if (bundle.includes('free')) return { final: 0, disc: price, free: true };
-  const idx = pkg === '4box' ? 1 : 0;
+  const idx = (pkg === '4box' || pkg === '6box') ? 1 : 0;   // 4盒/6盒用翻倍(B)券值
   let disc = 0; for (const k of bundle) if (DISC[k]) disc += DISC[k][idx];
   return { final: Math.max(0, price - disc), disc, free: false };
 }
