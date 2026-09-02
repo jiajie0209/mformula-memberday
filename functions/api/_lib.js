@@ -35,7 +35,7 @@ export const idxOf = k => WHEEL_KEYS.indexOf(k);
 export const DEFAULT_CONFIG = {
   rev: 1, status: 'running', weights: { ...DEFAULT_WEIGHTS }, codes: {}, updatedAt: 0,
   dayDraws: [5, 1, 1, 1, 1, 1, 3], shareBonus: 2, orderBonus: 3, redeemMs: 86400000,
-  activityStart: '2026-07-01', serverDraws: false,
+  activityStart: '2026-07-01', serverDraws: false, off: [],
 };
 
 /* ---------- D1 通用键值(config 等存 JSON) ---------- */
@@ -54,12 +54,13 @@ export async function loadConfig(env) {
   cfg.weights = { ...DEFAULT_WEIGHTS, ...(cfg.weights && typeof cfg.weights === 'object' ? cfg.weights : {}) };
   cfg.codes = (cfg.codes && typeof cfg.codes === 'object') ? cfg.codes : {};
   cfg.rev = Number.isFinite(cfg.rev) ? cfg.rev : 1;
-  cfg.dayDraws = (Array.isArray(cfg.dayDraws) && cfg.dayDraws.length === 7) ? cfg.dayDraws : [5, 1, 1, 1, 1, 1, 3];
+  cfg.dayDraws = (Array.isArray(cfg.dayDraws) && cfg.dayDraws.length >= 1) ? cfg.dayDraws : [5, 1, 1, 1, 1, 1, 3];   // 活动天数 = dayDraws.length(可 7 天、8 天…任意)
   cfg.shareBonus = Number.isFinite(cfg.shareBonus) ? cfg.shareBonus : 2;
   cfg.orderBonus = Number.isFinite(cfg.orderBonus) ? cfg.orderBonus : 3;
   cfg.redeemMs = Number.isFinite(cfg.redeemMs) ? cfg.redeemMs : 86400000;
   cfg.activityStart = (typeof cfg.activityStart === 'string') ? cfg.activityStart : '2026-07-01';
   cfg.serverDraws = !!cfg.serverDraws;
+  cfg.off = Array.isArray(cfg.off) ? cfg.off.filter(k => WHEEL_KEYS.includes(k)) : [];   // 本活动下架的奖品(不上轮盘、不发)
   cfg.msgOrder = (typeof cfg.msgOrder === 'string') ? cfg.msgOrder : '';       // 查顾客·正常消息模板(空=用前端默认)
   cfg.msgRecover = (typeof cfg.msgRecover === 'string') ? cfg.msgRecover : ''; // 查顾客·过期恢复消息模板
   return cfg;
@@ -178,9 +179,10 @@ export async function releaseStock(env, key) {
   if (key === 'gold') { await env.DB.prepare("DELETE FROM sentinels WHERE k='gold'").run(); return; }
   await refundStock(env, key);
 }
-export async function pickPrize(env, weights, ownedSet) {
+export async function pickPrize(env, weights, ownedSet, off) {
+  const skip = new Set(off || []);
   const stock = await stockMap(env);
-  const pool = WHEEL_KEYS.filter(k => !ownedSet.has(k) && (weights[k] || 0) > 0 &&
+  const pool = WHEEL_KEYS.filter(k => !ownedSet.has(k) && !skip.has(k) && (weights[k] || 0) > 0 &&
     (STOCK_DEFAULT[k] === undefined || (stock[k] === undefined ? STOCK_DEFAULT[k] : stock[k]) > 0));
   if (!pool.length) return null;
   const total = pool.reduce((a, k) => a + (weights[k] || 0), 0);

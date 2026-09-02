@@ -15,7 +15,7 @@ export async function onRequestPost({ request, env }) {
     const cfg = await loadConfig(env);
     if (cfg.status !== 'running') return json({ ok: false, reason: 'notrunning', status: cfg.status });
     const { day, todayKey } = dayInfo(cfg);
-    if (day < 1 || day > 7) return json({ ok: false, reason: 'window', day });
+    if (day < 1 || day > cfg.dayDraws.length) return json({ ok: false, reason: 'window', day });
 
     const member = await getMember(env, id);
     if (!member) return json({ ok: false, reason: 'nosession' }, 401);
@@ -26,7 +26,7 @@ export async function onRequestPost({ request, env }) {
     const owned = new Set((member.data.won || []).filter(k => !redeemExpired(member.data, k, rms)));
     let key = null;
     for (let t = 0; t < 4; t++) {
-      const k = await pickPrize(env, cfg.weights, owned);
+      const k = await pickPrize(env, cfg.weights, owned, cfg.off);
       if (!k) break;
       if (await spendStock(env, k)) { key = k; break; }
       owned.add(k);

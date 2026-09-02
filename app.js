@@ -14,11 +14,11 @@ const CONFIG = {
 const ADMIN_NAME = 'mformulammd';   // 管理员用户名(非密钥);口令由服务器校验,不进前端代码
 
 /* ---------------- 活动倒数(以大马时间 UTC+8 为准,和服务器算天数一致) ---------------- */
-const EVENT_DAYS = 7;                                          // 活动天数(1/7–7/7 = 7 天)
+let EVENT_DAYS = 7;                                            // 活动天数(登入后服务器 days 会覆盖,如 8 天)
 const klMidnight = ds => Date.parse(ds + 'T00:00:00+08:00');  // 某日期「大马时间 00:00」的绝对时刻
 let ACT_START = klMidnight('2026-07-01');                      // 第 1 天 00:00(默认;登入后服务器 activityStart 会覆盖)
 let ACT_END   = ACT_START + EVENT_DAYS*86400000;              // 第 7 天结束 = 第 8 天 00:00 大马时间(服务器此刻关抽奖)
-const drawsForDay = d => CONFIG.DAY_DRAWS[Math.min(Math.max(d|0,1),7)-1] || 1;
+const drawsForDay = d => CONFIG.DAY_DRAWS[Math.min(Math.max(d|0,1),CONFIG.DAY_DRAWS.length)-1] || 1;
 // 大马手机号校验(对齐服务器 normPhone:去 60/0 前缀后须 1xxxxxxxx)
 function myPhone(p){ let d=String(p||'').replace(/\D/g,''); if(d.startsWith('60')) d=d.slice(2); if(d.startsWith('0')) d=d.slice(1); return /^1[0-9]{8,9}$/.test(d) ? d : null; }
 
@@ -42,8 +42,9 @@ const WHEEL = [
   { key:'free', type:'ultra', sa:'免单', sb:'免单',  emoji:'🎫', img:'gift-free.png', color:'#6b3fa0', a:{label:'免单 整单免费'}, b:{label:'免单 整单免费'} },
   { key:'gold', type:'ultra', sa:'999金',sb:'999金', emoji:'🪙', img:'gift-gold.png', color:'#b8860b', a:{label:'999 黄金大奖'}, b:{label:'999 黄金大奖'} },
 ];
-const SEG = 360 / WHEEL.length;
-const byKey = k => WHEEL.find(p=>p.key===k);
+let offKeys = [];                                   // 本活动下架的奖品(服务器 off);不上轮盘、不发
+const activeWheel = () => WHEEL.filter(p=>!offKeys.includes(p.key));   // 本活动真正上盘的奖品
+const byKey = k => WHEEL.find(p=>p.key===k);        // 注意:查的是全量 WHEEL(历史/存档显示不受下架影响)
 const isUltra = k => { const p=byKey(k); return p && p.type==='ultra'; };
 const isDisc  = k => { const p=byKey(k); return p && p.type==='disc'; };
 const prizeLimit = () => curPkg().slots;
@@ -99,6 +100,10 @@ async function serverSession(){
     S.active=true; if(r.profile) S.profile=r.profile;
     S.chances = r.chances; S.won = Array.isArray(r.won)?r.won:[]; S.wonAt = r.wonAt||{}; S.day = r.day||S.day;
     if(r.weights) weights = {...weights, ...r.weights};
+    if(Array.isArray(r.off)) offKeys = r.off;                              // 本活动下架的奖品
+    if(Array.isArray(r.dayDraws) && r.dayDraws.length) CONFIG.DAY_DRAWS = r.dayDraws;
+    if(r.days>=1) EVENT_DAYS = r.days;
+    if(r.activityStart){ const st=klMidnight(r.activityStart); if(!isNaN(st)){ ACT_START=st; ACT_END=st+EVENT_DAYS*86400000; } }
     S.bundle = S.bundle.filter(k=>S.won.includes(k));
     save();
   }
@@ -111,6 +116,9 @@ async function bootstrapServer(){      // 启动时拉取服务器共用配置;�
     if(c&&c.ok){
       MF.api=true; MF.rev=c.rev||0;
       if(c.weights) weights={...weights,...c.weights};
+      if(Array.isArray(c.off)) offKeys = c.off;                        // 本活动下架的奖品(如水杯/背包)
+      if(Array.isArray(c.dayDraws) && c.dayDraws.length) CONFIG.DAY_DRAWS = c.dayDraws;   // 每天抽奖次数(客户端提示用)
+      if(c.days>=1) EVENT_DAYS = c.days;                               // 活动天数(如 8 天)→ 倒数/天数判断都跟着
       if(c.status) actStatus=c.status;
       if(typeof c.participants==='number') spCount = c.participants;   // 真实参与人数(社会证明)
       if(c.activityStart){ const st=klMidnight(c.activityStart); if(!isNaN(st)){ ACT_START=st; ACT_END=st+EVENT_DAYS*86400000; updateCountdown(); } }   // 以服务器开始日为准
@@ -160,14 +168,16 @@ function load(){
   m.bundle = m.bundle.filter(k=>m.won.includes(k));
   if(typeof m.codes!=='object'||!m.codes) m.codes={};
   m.chances = Number.isFinite(m.chances) ? Math.max(0, Math.floor(m.chances)) : drawsForDay(m.day);
-  m.day = Number.isInteger(m.day) ? Math.min(7, Math.max(1, m.day)) : 1;
+  m.day = Number.isInteger(m.day) ? Math.min(31, Math.max(1, m.day)) : 1;   // 只做防呆上限;真正天数由服务器 r.day 决定(支持任意天数活动)
   if(!PACKAGES.some(p=>p.key===m.pickPkg)) m.pickPkg='2box';
   return m;
 }
-let previewMode=false, _savedAdminS=null;   // 👁 浏览游戏预览:临时进顾客游戏,不碰真实数据/服务器
+let previewMode=false, _savedAdminS=null, _savedOff=null;   // 👁 浏览游戏预览:临时进顾客游戏,不碰真实数据/服务器
 function save(){ if(previewMode) return; localStorage.setItem('mfmemberday', JSON.stringify(S)); }
 function enterPreview(){
   _savedAdminS = S;
+  _savedOff = offKeys;   // 预览用「被浏览这个活动自己的奖品集」(7月=11个全有,新活动=9个),不用当前上线活动的
+  offKeys = (cdData && cdData.config && Array.isArray(cdData.config.off)) ? cdData.config.off.slice() : [];
   S = { name:'预览', phone:'', loggedIn:true, admin:false, day:1, chances:99, won:[], wonAt:{}, bundle:[], pickPkg:'2box', codes:{}, usedCodes:[] };
   previewMode = true;
   const pb=$('previewBar'); if(pb) pb.style.display='flex';
@@ -177,6 +187,7 @@ function enterPreview(){
 function exitPreview(){
   previewMode = false;
   if(_savedAdminS) S = _savedAdminS; _savedAdminS = null;
+  if(_savedOff!==null){ offKeys = _savedOff; _savedOff = null; }   // 恢复上线活动的奖品集
   const pb=$('previewBar'); if(pb) pb.style.display='none';
   const cb=$('countdownBar'); if(cb) cb.style.display='';
   go('campdetail');
@@ -259,8 +270,8 @@ function renderHome(){
 // 返回「不能抽奖」的原因(未开始/已结束/暂停…),可抽则 null
 function homeBlock(){
   if(previewMode) return null;   // 预览模式:游戏永远可玩
-  if(MF.p2 && S.day < 1) return {tone:'off', emoji:'🗓️', label:'活动还没开始', msg:'Member Day 7 月 1 日开始,敬请期待!到时来转大转盘 🎡'};
-  if(MF.p2 && S.day > 7) return {tone:'end', emoji:'🏁', label:'活动已结束', msg:'本次 Member Day 已结束,感谢参与 🎉'};
+  if(MF.p2 && S.day < 1) return {tone:'off', emoji:'🗓️', label:'活动还没开始', msg:'活动即将开始,敬请期待!到时来转大转盘 🎡'};
+  if(MF.p2 && S.day > EVENT_DAYS) return {tone:'end', emoji:'🏁', label:'活动已结束', msg:'本次 Member Day 已结束,感谢参与 🎉'};
   if(!isRunning()){ const st=ACT_STATES[actStatus]||ACT_STATES.running; return {tone:st.tone, emoji:st.emoji, label:st.label, msg:st.msg||''}; }
   return null;
 }
@@ -281,10 +292,10 @@ function statusModal(){ const hb=homeBlock(); if(hb) modal(hb.emoji, hb.label, h
 function setSpinUI(on){ const b=$('spinBtn'); if(!b) return; if(on){ b.disabled=true; b.innerHTML='🎡 抽奖中…'; } else applyActivityState(); }
 function renderReturnHint(){          // 大厅常驻:今天抽完别走,明天还有免费次数(兑现 7 天回访)
   const el=$('returnHint'); if(!el) return;
-  const show = !S.admin && !homeBlock() && S.day>=1 && S.day<7;
+  const show = !S.admin && !homeBlock() && S.day>=1 && S.day<EVENT_DAYS;
   if(!show){ el.style.display='none'; return; }
   el.style.display='block';
-  el.innerHTML = (S.day===6)
+  el.innerHTML = (S.day===EVENT_DAYS-1)
     ? `🎉 明天就是最后一天!<span class="rh-big">第 7 天大放送,有 <b>3</b> 次免费抽 — 记得回来!</span>`
     : `📅 今天抽完别走宝!<span class="rh-big">明天登入还有 <b>${drawsForDay(S.day+1)}</b> 次免费抽 🎡</span>`;
 }
@@ -297,24 +308,28 @@ function segChip(p){   // 转盘每格的内容:折扣券=金币券; 其它=真�
   return { chip:`<i class="wchip"><img src="assets/${im}" alt="" onerror="this.parentNode.textContent='${p.emoji}'"></i>`, label:wheelShort(p) };
 }
 function buildWheel(el){
-  const stops = WHEEL.map((p,i)=>`${p.color} ${i*SEG}deg ${(i+1)*SEG}deg`).join(',');
+  const AW = activeWheel(); const seg = 360/AW.length;
+  const stops = AW.map((p,i)=>`${p.color} ${i*seg}deg ${(i+1)*seg}deg`).join(',');
   const wheel = el || $('wheel');
   if(!wheel) return;
   wheel.style.background = `conic-gradient(${stops})`;
-  wheel.innerHTML = WHEEL.map((p,i)=>{ const sc=segChip(p);
-    return `<div class="wseg ${p.type==='ultra'?'wseg-ultra':''}" style="transform:rotate(${i*SEG + SEG/2}deg)"><span>${sc.chip}<b>${sc.label}</b></span></div>`;
+  wheel.innerHTML = AW.map((p,i)=>{ const sc=segChip(p);
+    return `<div class="wseg ${p.type==='ultra'?'wseg-ultra':''}" style="transform:rotate(${i*seg + seg/2}deg)"><span>${sc.chip}<b>${sc.label}</b></span></div>`;
   }).join('');
 }
-function weightedPick(){
-  const pool = WHEEL.filter(p => (stock[p.key]===undefined || stock[p.key]>0) && (weights[p.key]||0)>0);
-  if(!pool.length) return WHEEL.findIndex(p=>p.key==='v5');
+function weightedPick(){            // demo/本机版:从「上盘的奖品」里按权重抽,返回中奖 key
+  const AW = activeWheel();
+  const pool = AW.filter(p => (stock[p.key]===undefined || stock[p.key]>0) && (weights[p.key]||0)>0);
+  if(!pool.length) return (AW.find(p=>p.key==='v5') || AW[0] || WHEEL[0]).key;
   const total = pool.reduce((s,p)=>s+(weights[p.key]||0),0);
   let r = Math.random()*total;
-  for(const p of pool){ r-=(weights[p.key]||0); if(r<=0) return WHEEL.indexOf(p); }
-  return WHEEL.indexOf(pool[pool.length-1]);
+  for(const p of pool){ r-=(weights[p.key]||0); if(r<=0) return p.key; }
+  return pool[pool.length-1].key;
 }
-function animateTo(idx, done){      // 把第 idx 格转到顶部指针,转完回调
-  const landing = (360 - (idx*SEG + SEG/2));
+function animateToKey(key, done){   // 把「中奖那格」转到顶部指针(按 key 找,不依赖服务器 idx),转完回调
+  const AW = activeWheel(); const seg = 360/AW.length;
+  let idx = AW.findIndex(p=>p.key===key); if(idx<0) idx=0;
+  const landing = (360 - (idx*seg + seg/2));
   const cur = ((wheelRot % 360) + 360) % 360;
   wheelRot += 360*5 + ((landing - cur + 360) % 360);   // 至少 5 圈再停
   const wheel=$('wheel');
@@ -328,8 +343,8 @@ function spin(){
   if(!previewMode && MF.p2){ spinServer(); return; }   // 灰度:服务器版抽奖(防作弊);预览模式走本机
   if(S.chances<=0){ noChanceModal(); return; }
   spinning=true; setSpinUI(true); S.chances--; save(); renderTop();
-  const idx = weightedPick();
-  animateTo(idx, ()=>{ spinning=false; award(idx); });
+  const key = weightedPick();
+  animateToKey(key, ()=>{ spinning=false; awardKey(key); });
 }
 $('spinBtn') && $('spinBtn').addEventListener('click', spin);
 $('exitPreview') && $('exitPreview').addEventListener('click', exitPreview);
@@ -355,7 +370,7 @@ async function spinServer(retried){
     return;
   }
   S.chances = r.chances;
-  animateTo(r.idx, ()=>{
+  animateToKey(r.prize, ()=>{        // 按中奖 key 停格(和轮盘上盘的奖品对齐,不依赖 idx)
     spinning=false;
     if(!S.won.includes(r.prize)) S.won.push(r.prize);
     S.wonAt[r.prize] = r.wonAt || Date.now();
@@ -364,17 +379,17 @@ async function spinServer(retried){
   });
 }
 
-function award(idx){               // Phase 1 本机版
-  const p=WHEEL[idx];
-  if(S.won.includes(p.key)){          // 已有 → 送一次重抽,不空手
+function awardKey(key){            // Phase 1 本机版(按中奖 key)
+  const p=byKey(key); if(!p) return;
+  if(S.won.includes(key)){          // 已有 → 送一次重抽,不空手
     S.chances++; save(); renderTop(); setDrawsLeft();
     modal('🎁',`又抽中 ${pv(p).label}`,`你已经有这个啦,送你 <b>再抽一次</b> 🔄`,[{label:'再抽'}]); return;
   }
-  S.won.push(p.key);
-  S.wonAt[p.key] = Date.now();   // 开始 24 小时兑换倒计时
-  if(stock[p.key]>0) stock[p.key]--;
-  autoPick(p.key); save(); renderHome();
-  showWinModal(p.key);
+  S.won.push(key);
+  S.wonAt[key] = Date.now();   // 开始 24 小时兑换倒计时
+  if(stock[key]>0) stock[key]--;
+  autoPick(key); save(); renderHome();
+  showWinModal(key);
 }
 function showWinModal(key){
   const p=byKey(key); const im=wonImg(key);
@@ -503,7 +518,7 @@ function renderBundle(){
 
 /* ---------------- 续命:下单/兑换码 ---------------- */
 function noChanceModal(){
-  const tomorrow = (S.day>=1 && S.day<7) ? drawsForDay(S.day+1) : 0;
+  const tomorrow = (S.day>=1 && S.day<EVENT_DAYS) ? drawsForDay(S.day+1) : 0;
   const btns=[];
   btns.push({label:`🎁 输入兑换码`, action:codeModal});
   btns.push({label:`🛒 去下单（+${CONFIG.ORDER_BONUS}次）`, action:()=>go('home')});
@@ -712,7 +727,7 @@ async function renderCampDetail(id){                            // 一个活动�
 
   /* ---- 📋 内容 / 设置 ---- */
   h+=`<div class="cd-sec">📋 内容(设置)</div>`;
-  const wlist=WHEEL.map(p=>{ const w=(cfg.weights&&cfg.weights[p.key])||0; const nm=p.sa===p.sb?p.sa:`${p.sa}/${p.sb}`;
+  const wlist=WHEEL.filter(p=>!(cfg.off||[]).includes(p.key)).map(p=>{ const w=(cfg.weights&&cfg.weights[p.key])||0; const nm=p.sa===p.sb?p.sa:`${p.sa}/${p.sb}`;
     return ed ? `<div class="w-row"><span class="wn">${p.emoji} ${nm}</span><input class="w-in" type="number" min="0" step="0.5" value="${w}" data-cdw="${p.key}"></div>`
               : `<div class="w-row"><span class="wn">${p.emoji} ${nm}</span><span class="wp">${w}</span></div>`; }).join('');
   h+=`<div class="adm-card"><div class="adm-h">🎲 中奖概率${ed?'':' (只读)'}</div>${wlist}${ed?'<button id="cdSaveW" class="lead-btn" style="margin-top:9px">💾 保存概率</button>':''}<div class="adm-note">数字=权重,越大越容易中,<b>0=永不中</b>。</div></div>`;
@@ -767,11 +782,13 @@ function addCampaignModal(){
       <div class="msg-lbl">活动码(MMD+日月年,如 MMD080826)</div><input id="ncCode" class="m-input camp-in" placeholder="MMD080826">
       <div class="msg-lbl">标题</div><input id="ncTitle" class="m-input camp-in" placeholder="会员日 · 八月大转盘">
       <div class="msg-lbl">游戏主题</div><select id="ncTheme" class="m-input camp-in"><option value="wheel">🎡 大转盘</option><option value="scratch">🎫 刮刮乐</option><option value="match3">🧩 三消</option><option value="penalty">⚽ 点球</option></select>
-      <div class="msg-lbl">开始日期(结束日自动 = 开始+6天,共7天)</div><input id="ncStart" class="m-input camp-in" placeholder="2026-08-01">
+      <div class="msg-lbl">开始日期</div><input id="ncStart" class="m-input camp-in" placeholder="2026-09-02">
+      <div class="msg-lbl">活动天数(几天,如 8)</div><input id="ncDays" class="m-input camp-in" type="number" inputmode="numeric" min="1" max="31" value="7">
     </div>`,
     [{label:'创建活动',action:async ()=>{
       const id=($('ncCode').value||'').trim().toUpperCase(), title=($('ncTitle').value||'').trim(), theme=$('ncTheme').value, start=($('ncStart').value||'').trim();
-      const r=await apiPOST('/api/admin',{action:'createCampaign',id,title,theme,start});
+      const days=Math.max(1,Math.min(31,parseInt($('ncDays').value,10)||7));
+      const r=await apiPOST('/api/admin',{action:'createCampaign',id,title,theme,start,days});
       if(r&&r.ok){ toastModal('✅ 活动已创建(草稿)'); renderCampaigns(); }
       else { toastModal(r&&r.hint?r.hint:'创建失败,检查活动码/日期格式 🙂'); }
     }},{label:'取消',sub:true}]);
@@ -819,8 +836,9 @@ function renderAdmin(){
     ${list}
     <div class="code-add"><input id="newCode" placeholder="新码 如 BONUS10" autocapitalize="characters"><input id="newCodeN" type="number" inputmode="numeric" placeholder="次数" min="1" max="99"><button id="addCodeBtn">+ 添加</button></div>
     <div class="adm-note">${MF.api?'✅ <b>已连服务器</b>:加的码对<b>所有顾客即时生效</b>,删了就真的没了(列表以服务器为准)。':'⚠️ 未连服务器,加的码只存本机。'}</div></div>`;
-  const totalW = WHEEL.reduce((s,p)=>s+(weights[p.key]||0),0);
-  const wlist = WHEEL.map(p=>{ const w=weights[p.key]||0; const pct=totalW>0?(w/totalW*100):0; const nm=p.sa===p.sb?p.sa:`${p.sa}/${p.sb}`;
+  const AWk = WHEEL.filter(p=>!offKeys.includes(p.key));   // 只显示本活动上盘的奖品
+  const totalW = AWk.reduce((s,p)=>s+(weights[p.key]||0),0);
+  const wlist = AWk.map(p=>{ const w=weights[p.key]||0; const pct=totalW>0?(w/totalW*100):0; const nm=p.sa===p.sb?p.sa:`${p.sa}/${p.sb}`;
     return `<div class="w-row"><span class="wn">${p.emoji} ${nm}</span><input class="w-in" type="number" min="0" step="0.5" value="${w}" data-wkey="${p.key}"><span class="wp">${pct.toFixed(1)}%</span></div>`; }).join('');
   const weightsCard = `<div class="adm-card"><div class="adm-h">🎲 转盘中奖概率(改数字 → 实时生效)</div>${wlist}<div class="adm-note">数字 = 中奖权重,越大越容易中。<b>0 = 永不中</b>(如 999 金)。右边 % 是相对概率。</div></div>`;
   const cur = ACT_STATES[actStatus] || ACT_STATES.running;
@@ -930,7 +948,7 @@ async function loadAdminStats(){           // 拉真实统计 + 排行榜
     : '<div class="adm-empty">还没有人中奖</div>';
   const pc = st.prizeCounts || {};
   const ps = $('prizeStats');
-  if(ps) ps.innerHTML = WHEEL.map(p=>{ const n=pc[p.key]||0; const nm=(p.sa===p.sb)?p.sa:`${p.sa}/${p.sb}`; return `<div class="pz-row"><span class="pz-nm">${p.emoji} ${nm}</span><span class="pz-n">${n} 人</span></div>`; }).join('');
+  if(ps) ps.innerHTML = WHEEL.filter(p=>!offKeys.includes(p.key)).map(p=>{ const n=pc[p.key]||0; const nm=(p.sa===p.sb)?p.sa:`${p.sa}/${p.sb}`; return `<div class="pz-row"><span class="pz-nm">${p.emoji} ${nm}</span><span class="pz-n">${n} 人</span></div>`; }).join('');
 }
 async function csVerify(){                  // 客服核对下单兑换码
   const code=($('csCode').value||'').trim().toUpperCase();
@@ -1055,7 +1073,7 @@ function renderBtns(buttons){
 
 /* ---------------- 下一天 ---------------- */
 $('nextDayBtn').onclick=()=>{
-  if(S.day>=7){
+  if(S.day>=EVENT_DAYS){
     modal('🏆','Member Day 结束!',`活动结束啦。你抽中了 <b>${S.won.length}</b> 件好礼。<br>点下面重置 demo。`,[{label:'重玩 demo',action:()=>{ localStorage.removeItem('mfmemberday'); location.reload(); }}]);
     return;
   }

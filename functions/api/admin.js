@@ -2,7 +2,7 @@
 import { loadConfig, saveConfig, adminOK, adminCookieOK, clampWeights, isStatus, loadStats, getRedemption, saveRedemption, listLeads, normPhone, json, kvSet, kvGet,
   getCampaign, setCampaign, archiveCampaign, rollupCustomers, resetWorkingTables, getArchive, listArchives, customerFull,
   ensureArchiveTables, ensureCampaigns, getCampaignReg, putCampaignReg, insertCampaignRegIfAbsent, listCampaignRegs,
-  DEFAULT_CONFIG, DEFAULT_WEIGHTS, klDate } from './_lib.js';
+  DEFAULT_CONFIG, DEFAULT_WEIGHTS, WHEEL_KEYS, klDate } from './_lib.js';
 
 export async function onRequestPost({ request, env }) {
   try {
@@ -117,11 +117,14 @@ export async function onRequestPost({ request, env }) {
       const start = String(body.start || '').trim();
       const startMs = Date.parse(start + 'T00:00:00+08:00');
       if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || isNaN(startMs)) return json({ ok: false, error: 'bad_start', hint: '开始日期格式:2026-08-01' });
-      const end = klDate(startMs + 6 * 86400000);   // 固定 7 天(开始+6)——和游戏天数逻辑一致
+      const days = Math.max(1, Math.min(31, parseInt(body.days, 10) || 7));   // 活动天数(默认 7,可指定,如 8)
+      const end = klDate(startMs + (days - 1) * 86400000);   // 结束日 = 开始 + (天数-1)
       const theme = String(body.theme || 'wheel').trim() || 'wheel';
       const title = String(body.title || '').trim() || id;
       const freshCfg = JSON.parse(JSON.stringify(DEFAULT_CONFIG));   // 全新独立设置(不从任何活动复制)
       freshCfg.weights = { ...DEFAULT_WEIGHTS }; freshCfg.codes = {}; freshCfg.activityStart = start;
+      freshCfg.dayDraws = Array.from({ length: days }, (_, i) => i === 0 ? 5 : (i === days - 1 ? 3 : 1));   // 第一天5次·最后一天3次·中间每天1次
+      freshCfg.off = Array.isArray(body.off) ? body.off.filter(k => WHEEL_KEYS.includes(k)) : ['tumbler', 'duffle'];   // 默认下架世界杯水杯/背包(7月存档不受影响)
       freshCfg.msgOrder = ''; freshCfg.msgRecover = ''; freshCfg.serverDraws = true; freshCfg.status = 'running';
       const rec = { id, title, theme, status: 'planning', start, end, config: freshCfg, archiveId: id, historyKey: id, createdAt: Date.now(), updatedAt: Date.now() };
       await putCampaignReg(env, rec);
@@ -154,7 +157,7 @@ export async function onRequestPost({ request, env }) {
       if (reg.status === 'ended') { config = reg.config || {}; const a = await getArchive(env, reg.archiveId || reg.id); if (a) data = { participants: a.participants, spins: a.spins, orders: a.orders, prizeCounts: a.prizeCounts, winners: a.winners }; }
       else if (isLive) { config = await loadConfig(env); const s = await loadStats(env); data = { participants: s.participants, spins: s.spins, orders: s.orders, prizeCounts: s.prizeCounts, winners: s.winners }; editable = true; }
       else { config = reg.config || {}; editable = true; }   // 草稿
-      return json({ ok: true, campaign: { id: reg.id, title: reg.title, theme: reg.theme, status: reg.status, start: reg.start, end: reg.end, isLive, serveStatus: isLive ? (config.status || 'running') : null }, config: { weights: config.weights || {}, codes: config.codes || {}, msgOrder: config.msgOrder || '', msgRecover: config.msgRecover || '' }, data, editable });
+      return json({ ok: true, campaign: { id: reg.id, title: reg.title, theme: reg.theme, status: reg.status, start: reg.start, end: reg.end, isLive, serveStatus: isLive ? (config.status || 'running') : null }, config: { weights: config.weights || {}, off: config.off || [], dayDraws: config.dayDraws || [], codes: config.codes || {}, msgOrder: config.msgOrder || '', msgRecover: config.msgRecover || '' }, data, editable });
     }
     if (action === 'setCampaignConfig') {   // 编辑草稿或正在进行的活动设置(正在进行 → 写实时镜像)
       const id = String(body.id || '').trim().toUpperCase();
@@ -165,6 +168,7 @@ export async function onRequestPost({ request, env }) {
       const base = isLive ? await loadConfig(env) : Object.assign(JSON.parse(JSON.stringify(DEFAULT_CONFIG)), reg.config || {});
       const p = body.patch || {};
       if (p.weights && typeof p.weights === 'object') base.weights = clampWeights(p.weights, base.weights);
+      if (Array.isArray(p.off)) base.off = p.off.filter(k => WHEEL_KEYS.includes(k));   // 本活动上/下架奖品
       if (p.codes && typeof p.codes === 'object') base.codes = p.codes;
       if (typeof p.msgOrder === 'string') base.msgOrder = p.msgOrder;
       if (typeof p.msgRecover === 'string') base.msgRecover = p.msgRecover;

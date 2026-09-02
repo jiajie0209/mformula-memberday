@@ -20,9 +20,10 @@ export async function onRequestPost({ request, env }) {
       m.lastSeen = Date.now();
       if (!m.days[todayKey]) {
         let grant = 0;
-        if (day >= 1 && day <= 7) {
+        const N = cfg.dayDraws.length;   // 活动天数(7 天、8 天…任意)
+        if (day >= 1 && day <= N) {
           const firstEver = Object.keys(m.days).length === 0;   // 从没记录过任何一天 = 新顾客第一次登入
-          grant = firstEver ? cfg.dayDraws[0] : (day === 7 ? cfg.dayDraws[6] : 1);   // 新客第一天=5,活动第7天=3,平常回访=1
+          grant = firstEver ? cfg.dayDraws[0] : (day === N ? cfg.dayDraws[N - 1] : 1);   // 新客第一天=5,活动最后一天=3,平常回访=1
         }
         m.days[todayKey] = { granted: grant, used: 0 };
       }
@@ -32,6 +33,7 @@ export async function onRequestPost({ request, env }) {
     if (isNew) { try { await bumpStats(env, { participants: 1 }); } catch (e) {} }   // 统计尽力
     return json({
       ok: true, active: true, day, status: cfg.status, weights: cfg.weights, redeemMs: cfg.redeemMs,
+      off: cfg.off, days: cfg.dayDraws.length, dayDraws: cfg.dayDraws, activityStart: cfg.activityStart,
       chances: chancesOf(member, todayKey), won: member.won, wonAt: member.wonAt, pkg: member.pkg,
     }, 200, { 'set-cookie': await sessionCookie(env, id) });
   } catch (e) { return json({ ok: false, error: String(e && e.message || e) }, 500); }
