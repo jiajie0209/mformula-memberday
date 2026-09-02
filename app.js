@@ -26,22 +26,22 @@ function myPhone(p){ let d=String(p||'').replace(/\D/g,''); if(d.startsWith('60'
 const PACKAGES = [
   { key:'2box', name:'2 Boxes 配套', price:358, boxes:2, slots:2, variant:'a', ticket:'🎟️ 普通抽奖券 ×2' },
   { key:'4box', name:'4 Boxes 配套', price:716, boxes:4, slots:3, variant:'b', ticket:'🎟️ 普通抽奖券 ×4' },
-  { key:'6box', name:'6 Boxes 配套', price:1074, boxes:6, slots:4, variant:'b', ticket:'🎟️ VIP抽奖券 ×16' },
+  { key:'6box', name:'6 Boxes 配套', price:1074, boxes:6, slots:3, variant:'c', ticket:'🎟️ VIP抽奖券 ×16' },
 ];
 
-// 大转盘奖品。a=2 Boxes(配套A,基础); b=4 Boxes(配套B,自动翻倍)
+// 大转盘奖品。a=2 Boxes(基础); b=4 Boxes(翻倍); c=6 Boxes(券同4盒控成本·盒子奖更大,最大3盒)
 const WHEEL = [
-  { key:'v5',  type:'disc', sa:'RM5',  sb:'RM10', emoji:'🎟️', img:'gift-voucher.png', color:'#147d6e', a:{label:'RM5 折扣券',value:5},   b:{label:'RM10 折扣券',value:10} },
-  { key:'v10', type:'disc', sa:'RM10', sb:'RM20', emoji:'🎟️', img:'gift-voucher.png', color:'#0E3947', a:{label:'RM10 折扣券',value:10}, b:{label:'RM20 折扣券',value:20} },
-  { key:'v30', type:'disc', sa:'RM30', sb:'RM60', emoji:'🎟️', img:'gift-voucher.png', color:'#147d6e', a:{label:'RM30 折扣券',value:30}, b:{label:'RM60 折扣券',value:60} },
-  { key:'v50', type:'disc', sa:'RM50', sb:'RM100',emoji:'🎟️', img:'gift-voucher.png', color:'#0E3947', a:{label:'RM50 折扣券',value:50}, b:{label:'RM100 折扣券',value:100} },
-  { key:'g5',  type:'gift', sa:'5包',  sb:'10包', emoji:'🧪', img:'gift-sachet.png',  color:'#147d6e', a:{label:'5 包试饮装',img:'gift-sachet.png'},  b:{label:'10 包试饮装',img:'gift-sachet.png'} },
-  { key:'g10', type:'gift', sa:'10包', sb:'20包', emoji:'🧪', img:'gift-sachet.png',  color:'#0E3947', a:{label:'10 包试饮装',img:'gift-sachet.png'}, b:{label:'20 包试饮装',img:'gift-sachet.png'} },
-  { key:'g15', type:'gift', sa:'15包', sb:'1盒',  emoji:'🧪', img:'gift-sachet.png',  color:'#147d6e', a:{label:'15 包试饮装',img:'gift-sachet.png'}, b:{label:'1 盒 MFormula',img:'gift-box.png'} },
+  { key:'v5',  type:'disc', sa:'RM5',  sb:'RM10', sc:'RM10', emoji:'🎟️', img:'gift-voucher.png', color:'#147d6e', a:{label:'RM5 折扣券',value:5},   b:{label:'RM10 折扣券',value:10}, c:{label:'RM10 折扣券',value:10} },
+  { key:'v10', type:'disc', sa:'RM10', sb:'RM20', sc:'RM20', emoji:'🎟️', img:'gift-voucher.png', color:'#0E3947', a:{label:'RM10 折扣券',value:10}, b:{label:'RM20 折扣券',value:20}, c:{label:'RM20 折扣券',value:20} },
+  { key:'v30', type:'disc', sa:'RM30', sb:'RM60', sc:'RM60', emoji:'🎟️', img:'gift-voucher.png', color:'#147d6e', a:{label:'RM30 折扣券',value:30}, b:{label:'RM60 折扣券',value:60}, c:{label:'RM60 折扣券',value:60} },
+  { key:'v50', type:'disc', sa:'RM50', sb:'RM100',sc:'RM100',emoji:'🎟️', img:'gift-voucher.png', color:'#0E3947', a:{label:'RM50 折扣券',value:50}, b:{label:'RM100 折扣券',value:100}, c:{label:'RM100 折扣券',value:100} },
+  { key:'g5',  type:'gift', sa:'5包',  sb:'10包', sc:'15包', emoji:'🧪', img:'gift-sachet.png',  color:'#147d6e', a:{label:'5 包试饮装',img:'gift-sachet.png'},  b:{label:'10 包试饮装',img:'gift-sachet.png'}, c:{label:'15 包试饮装',img:'gift-sachet.png'} },
+  { key:'g10', type:'gift', sa:'10包', sb:'20包', sc:'1盒', emoji:'🧪', img:'gift-sachet.png',  color:'#0E3947', a:{label:'10 包试饮装',img:'gift-sachet.png'}, b:{label:'20 包试饮装',img:'gift-sachet.png'}, c:{label:'1 盒 MFormula',img:'gift-box.png'} },
+  { key:'g15', type:'gift', sa:'15包', sb:'1盒',  sc:'3盒', emoji:'🧪', img:'gift-sachet.png',  color:'#147d6e', a:{label:'15 包试饮装',img:'gift-sachet.png'}, b:{label:'1 盒 MFormula',img:'gift-box.png'}, c:{label:'3 盒 MFormula',img:'gift-box.png'} },
   { key:'tumbler', type:'gift', sa:'水杯', sb:'水杯', emoji:'🥤', img:'gift-tumbler.png', color:'#0E3947', a:{label:'FIFA Tumbler',img:'gift-tumbler.png'}, b:{label:'FIFA Tumbler',img:'gift-tumbler.png'} },
   { key:'duffle',  type:'gift', sa:'背包', sb:'背包', emoji:'👜', img:'gift-duffle.png',  color:'#147d6e', a:{label:'FIFA Duffle Bag',img:'gift-duffle.png'}, b:{label:'FIFA Duffle Bag',img:'gift-duffle.png'} },
-  { key:'free', type:'ultra', sa:'免单', sb:'免单',  emoji:'🎫', img:'gift-free.png', color:'#6b3fa0', a:{label:'免单 整单免费'}, b:{label:'免单 整单免费'} },
-  { key:'gold', type:'ultra', sa:'999金',sb:'999金', emoji:'🪙', img:'gift-gold.png', color:'#b8860b', a:{label:'999 黄金大奖'}, b:{label:'999 黄金大奖'} },
+  { key:'free', type:'ultra', sa:'免单', sb:'免单',  sc:'免单', emoji:'🎫', img:'gift-free.png', color:'#6b3fa0', a:{label:'免单 整单免费'}, b:{label:'免单 整单免费'}, c:{label:'免单 整单免费'} },
+  { key:'gold', type:'ultra', sa:'999金',sb:'999金', sc:'999金', emoji:'🪙', img:'gift-gold.png', color:'#b8860b', a:{label:'999 黄金大奖'}, b:{label:'999 黄金大奖'}, c:{label:'999 黄金大奖'} },
 ];
 let offKeys = [];                                   // 本活动下架的奖品(服务器 off);不上轮盘、不发
 const activeWheel = () => WHEEL.filter(p=>!offKeys.includes(p.key));   // 本活动真正上盘的奖品
@@ -49,12 +49,12 @@ const byKey = k => WHEEL.find(p=>p.key===k);        // 注意:查的是全量 WH
 const isUltra = k => { const p=byKey(k); return p && p.type==='ultra'; };
 const isDisc  = k => { const p=byKey(k); return p && p.type==='disc'; };
 const prizeLimit = () => curPkg().slots;
-const pkgB = () => (curPkg().variant === 'b');             // 当前配套是否用「翻倍(B)」奖品(4盒/6盒)
-const pv = p => (pkgB() ? p.b : p.a);                      // 按配套取 A/B
+const pkgVar = () => (curPkg().variant || 'a');           // 当前配套奖品档:a=2盒 b=4盒 c=6盒
+const pv = p => (p[pkgVar()] || p.b || p.a);              // 按配套取 A/B/C(缺 C 时退回 B/A)
 const wonLabel = k => { const p=byKey(k); return p ? pv(p).label : ''; };
 const wonImg = k => { const p=byKey(k); if(!p) return ''; return pv(p).img || p.img; };
 const wonVal = k => { const p=byKey(k); return (p && pv(p).value) || 0; };
-const wheelShort = p => (pkgB() ? p.sb : p.sa);
+const wheelShort = p => (p['s'+pkgVar()] || p.sb || p.sa);
 
 // 中奖权重(管理员后台可改);真实概率 = 权重 / 总和。0 = 永不中
 const DEFAULT_WEIGHTS = { v5:22, v10:14, v30:5, v50:1, g5:18, g10:12, g15:5, tumbler:10, duffle:6, free:0.5, gold:0 };
@@ -306,7 +306,7 @@ function renderReturnHint(){          // 大厅常驻:今天抽完别走,明天�
 let wheelRot = 0, spinning = false;
 function segChip(p){   // 转盘每格的内容:折扣券=金币券; 其它=真实产品图
   if(p.type==='disc') return { chip:`<i class="wchip wcoupon">${wheelShort(p)}</i>`, label:'折扣券' };
-  const im = (pkgB() ? (p.b.img||p.img) : (p.a.img||p.img));
+  const im = (pv(p).img || p.img);
   return { chip:`<i class="wchip"><img src="assets/${im}" alt="" onerror="this.parentNode.textContent='${p.emoji}'"></i>`, label:wheelShort(p) };
 }
 function buildWheel(el){
@@ -381,23 +381,18 @@ async function spinServer(retried){
   });
 }
 
-function awardKey(key){            // Phase 1 本机版(按中奖 key)
+function awardKey(key){            // 本机/预览版(按中奖 key)。重复中奖 → 直接再出现(不卡、不强制重抽)
   const p=byKey(key); if(!p) return;
-  if(S.won.includes(key)){          // 已有 → 送一次重抽,不空手
-    S.chances++; save(); renderTop(); setDrawsLeft();
-    modal('🎁',`又抽中 ${pv(p).label}`,`你已经有这个啦,送你 <b>再抽一次</b> 🔄`,[{label:'再抽'}]); return;
-  }
-  S.won.push(key);
-  S.wonAt[key] = Date.now();   // 开始 24 小时兑换倒计时
-  if(stock[key]>0) stock[key]--;
-  autoPick(key); save(); renderHome();
-  showWinModal(key);
+  if(!S.won.includes(key)){ S.won.push(key); if(stock[key]>0) stock[key]--; }   // 新礼物才进列表 + 扣库存
+  S.wonAt[key] = Date.now();   // 新的或重复的都刷新 24 小时兑换倒计时
+  autoPick(key); save(); renderHome();   // renderHome 会恢复抽奖按钮(修掉「抽奖中…」卡住)
+  showWinModal(key);           // 重复也照常弹出中奖(让它重复出现)
 }
 function showWinModal(key){
   const p=byKey(key); const im=wonImg(key);
   const img = im ? `<img src="assets/${im}" alt="" onerror="this.replaceWith(document.createTextNode('${p.emoji}'))">` : p.emoji;
   const scales = JSON.stringify(p.a)!==JSON.stringify(p.b);
-  const canUpsell = scales && p.type!=='ultra' && !pkgB();   // 还在基础(2盒)→ 当场一键升级到翻倍(峰值情绪转化)
+  const canUpsell = scales && p.type!=='ultra' && pkgVar()==='a';   // 只在基础(2盒)→ 当场一键升级(4盒/6盒已是更大档)
   let extra, btns;
   if(canUpsell){
     const saveLine = p.type==='disc' ? `<div class="m-upsave">等于再省 RM${(p.b.value||0)-(p.a.value||0)}!</div>` : '';
@@ -962,12 +957,14 @@ async function csVerify(){                  // 客服核对下单兑换码
   if(!r || !r.ok){ box.innerHTML='<div class="cs-bad">服务器没回应,再试一次</div>'; return; }
   if(!r.rec){ box.innerHTML='<div class="cs-bad">❌ 找不到这个码(可能是假的或打错了)</div>'; return; }
   const rec=r.rec;
-  const items=(rec.bundle||[]).length ? rec.bundle.map(k=>{const p=byKey(k); return p?(rec.pkg==='4box'?p.sb:p.sa):k;}).join('、') : '(无好礼)';
+  const rpkg = PACKAGES.find(p=>p.key===rec.pkg) || PACKAGES[0];   // 按订单真实配套取标签(2/4/6盒)
+  const rvar = rpkg.variant || 'a';
+  const items=(rec.bundle||[]).length ? rec.bundle.map(k=>{const p=byKey(k); return p?(p['s'+rvar]||p.sb||p.sa):k;}).join('、') : '(无好礼)';
   const statusTxt = rec.status==='redeemed' ? '<span class="cs-used">⚠️ 已发货过</span>' : '<span class="cs-ok">✓ 有效 · 未发货</span>';
   box.innerHTML=`<div class="cs-card">
     <div class="cs-row">${statusTxt}</div>
     <div class="cs-row">会员:<b>${rec.name||''}</b>(${rec.phone||''})</div>
-    <div class="cs-row">配套:${rec.pkg==='4box'?'4 Boxes RM716':'2 Boxes RM358'}</div>
+    <div class="cs-row">配套:${rpkg.name} RM${rpkg.price}</div>
     <div class="cs-row">好礼:${items}</div>
     <div class="cs-row">应付:<b>${rec.free?'RM0(免单)':'RM'+rec.final}</b></div>
     ${rec.status!=='redeemed'?'<button id="csRedeemBtn" class="act-set" style="margin-top:8px">标记已发货</button>':''}</div>`;
