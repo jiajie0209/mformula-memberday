@@ -51,7 +51,7 @@ function pick(odds, n) {
 }
 const shown = (odds, n) => IDS.filter(id => odds[id][n] > 0);
 
-// 这个配套抽不到、但大配套抽得到的奖品:标成「X盒大奖」,吸引升级
+// 这个配套抽不到、但大配套抽得到的奖品:一样显示出来,吸引升级(客服语音说明)
 function locks(odds, n) {
   const out = {};
   for (const id of IDS) {
