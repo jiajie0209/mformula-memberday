@@ -21,6 +21,7 @@ const DEFAULT_ODDS = {
 const ODDS_VERSION = 5;   // 改了奖品表就加一,旧的保存值不再用
 const IDS = Object.keys(DEFAULT_ODDS);
 const FIRST = 'rm50';     // 每个人第 1 个红包固定
+const END_AT = Date.UTC(2026, 10, 11, 15, 59, 0);   // 11/11 23:59 马来西亚时间
 
 async function ensure(env) {
   await env.DB.batch([
@@ -67,6 +68,7 @@ async function play(env, b) {
   const find = () => env.DB.prepare('SELECT d.pkg, d.seq, p.picks FROM d11_draws d LEFT JOIN d11_picks p ON p.phone=d.phone WHERE d.phone=?').bind(phone).first();
   let row = await find();
   if (!row) {
+    if (Date.now() >= END_AT) return json({ ok: false, error: 'ended' });
     if (!cfg.open) return json({ ok: false, error: 'closed' });
     await env.DB.prepare('INSERT INTO d11_draws (phone,name,seq,at) VALUES (?,?,?,?) ON CONFLICT(phone) DO NOTHING')
       .bind(phone, name, JSON.stringify(drawAll(cfg.odds)), Date.now()).run();

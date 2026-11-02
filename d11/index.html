@@ -10,7 +10,7 @@ body[data-tier="4"]{--pk:#0D5A70;--pk2:#07394B;--pk3:#052B38;--pkb:#F2C14E}
 body[data-tier="6"]{--pk:#E8B84A;--pk2:#CC9A30;--pk3:#A87A1E;--pkb:#FFF1C2;--seal:#C8102E;--sealt:#FFE9A8}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;background:var(--navy);color:var(--light);font-family:"PingFang SC","Noto Sans SC","Microsoft YaHei",system-ui,sans-serif}
-.app{position:relative;max-width:460px;min-height:100vh;min-height:100dvh;margin:0 auto;padding:22px 16px 28px;background:var(--navy) url(img/bg.webp) top center/cover no-repeat;overflow:hidden}
+.app{position:relative;max-width:460px;min-height:100vh;min-height:100dvh;margin:0 auto;padding:22px 16px 28px;background:var(--navy) url(img/bg.webp) top center/cover no-repeat;overflow:hidden;overflow:clip}
 .tag{display:block;width:max-content;margin:0 auto;padding:4px 14px;border:1px solid rgba(242,193,78,.6);border-radius:99px;font-size:13px;color:var(--gold2)}
 h1{margin:10px 0 2px;text-align:center;font-size:42px;line-height:1.15;font-weight:800;color:var(--gold);letter-spacing:2px}
 .sub{margin:0;text-align:center;font-size:15px;color:#CFE0E5}
@@ -74,7 +74,10 @@ h1{margin:10px 0 2px;text-align:center;font-size:42px;line-height:1.15;font-weig
 .row.top{background:var(--gold)}
 .note{margin:12px 0 0;text-align:center;font-size:14px;color:#CFE0E5}
 @media(max-height:600px){.stage{transform:scale(.68);margin:-48px 0}}
-.pvbar{display:flex;justify-content:space-between;align-items:center;margin:-22px -16px 14px;padding:8px 14px;background:#6b3fa0;color:#fff;font-size:13px}
+.topbar{position:sticky;top:0;z-index:10;margin:-22px -16px 14px}
+.pvbar{display:flex;justify-content:space-between;align-items:center;padding:8px 14px;background:#6b3fa0;color:#fff;font-size:13px}
+.cdown{padding:8px 10px;background:#A50D24;color:#fff;font-size:14px;font-weight:700;text-align:center;white-space:nowrap}
+.cdown b{display:inline-block;min-width:26px;margin:0 2px;padding:1px 4px;border-radius:5px;background:#F2C14E;color:#5A1410;font-weight:800;font-variant-numeric:tabular-nums}
 .pvbar a{color:#fff;font-weight:700}
 .row.pick{width:100%;border:0;font:inherit;text-align:left;cursor:pointer}
 .row .no{flex:0 0 26px;height:26px;margin-right:10px;border-radius:50%;border:2px solid #7D93A0;background:#fff;color:#fff;font-size:15px;font-weight:800;text-align:center;line-height:22px}
@@ -86,7 +89,10 @@ canvas{position:fixed;top:0;left:0;z-index:30;pointer-events:none}
 </head>
 <body>
 <main class="app">
-  <div class="pvbar" id="pvBar" hidden><span>👁 预览模式，不影响真实数据</span><a href="admin">退出</a></div>
+  <div class="topbar">
+    <div class="pvbar" id="pvBar" hidden><span>👁 预览模式，不影响真实数据</span><a href="admin">退出</a></div>
+    <div class="cdown" id="cdown"></div>
+  </div>
   <span class="tag" id="tag">MFormula 双11 礼物</span>
   <h1 id="title">拆红包</h1>
   <p class="sub" id="sub">6 个红包，100% 有奖</p>
@@ -189,7 +195,7 @@ async function startGame() {
     } else {
       const r = await api({a:"play", name, phone:d});
       if (r.ok) { who = name; phone = d; paint(r); }
-      else $("err").textContent = r.error === "closed" ? "活动还没开始，请等 Ah Kent 通知" : "网络不稳，再试一次";
+      else $("err").textContent = r.error === "closed" ? "活动还没开始，请等 Ah Kent 通知" : r.error === "ended" ? "活动已经结束了" : "网络不稳，再试一次";
     }
   } catch (e) {
     $("err").textContent = "网络不稳，再试一次";
@@ -356,6 +362,14 @@ function confetti(n) {
     if (++t < 130) requestAnimationFrame(tick); else x.clearRect(0, 0, c.width, c.height);
   })();
 }
+
+function tickDown() {
+  const s = Math.max(0, Math.floor((END_AT - Date.now()) / 1000));
+  const pad = n => String(n).padStart(2, "0");
+  $("cdown").innerHTML = s ? `活动倒数 <b>${Math.floor(s / 86400)}</b>天 <b>${pad(Math.floor(s / 3600) % 24)}</b>时 <b>${pad(Math.floor(s / 60) % 60)}</b>分 <b>${pad(s % 60)}</b>秒` : "活动已经结束了";
+}
+tickDown();
+setInterval(tickDown, 1000);
 
 $("go").onclick = startGame;
 $("send").onclick = sendResult;
