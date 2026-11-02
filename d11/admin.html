@@ -106,7 +106,7 @@ td input{width:100%;min-width:48px;height:34px;border:1.5px solid var(--line);bo
 <script src="shared.js"></script>
 <script>
 const $ = id => document.getElementById(id);
-const LINKS = {2:{price:308, base:104, limit:32, orders:60}, 4:{price:666, base:256, limit:35, orders:20}, 6:{price:1149, base:441, limit:43.2, orders:20}};
+const LINKS = {2:{price:358, base:104, limit:32, orders:60}, 4:{price:666, base:256, limit:35, orders:20}, 6:{price:1149, base:441, limit:43.2, orders:20}};
 const byId = id => PRIZES.find(p => p.id === id);
 const nameOf = id => (byId(id) || {short:id}).short;
 const costOf = r => r.seq.reduce((a, id) => a + ((byId(id) || {}).cost || 0), 0);
