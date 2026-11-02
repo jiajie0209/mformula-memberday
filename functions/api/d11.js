@@ -4,23 +4,21 @@ import { adminCookieOK, json, kvGet, kvSet } from './_lib.js';
 
 const KEYS = { x7k2: 2, q4m9: 4, z8p3: 6 };   // 3 个链接的暗码 → 可拆几次
 const LINKS = [2, 4, 6];
-// 目标成本率(含抽奖、已扣 RM50):2盒 35.7%,4盒 39–39.9%,6盒 41–42.8%
+// 目标成本率(含抽奖、已扣 RM50):2盒 35.7%,4盒 39–39.9%,6盒 41–42.8%。
+// 4盒用 CARE RM16 算是 40.4%,最便宜的奖品也要 RM4,CARE 实际 RM14 或以下才进目标
 const DEFAULT_ODDS = {
-  wow1:     { 2: 0,    4: 40,  6: 0 },
-  sachet3:  { 2: 0,    4: 40,  6: 0 },
-  sachet5:  { 2: 55.5, 4: 8,   6: 29 },
-  sachet10: { 2: 10,   4: 1.5, 6: 25 },
-  wow2:     { 2: 25,   4: 8,   6: 15 },
-  wow5:     { 2: 4,    4: 1.3, 6: 12 },
-  wow10:    { 2: 0.5,  4: 0.3, 6: 4 },
+  sachet5:  { 2: 56.5, 4: 13,  6: 36 },
+  sachet10: { 2: 10,   4: 1,   6: 25 },
+  wow2:     { 2: 25,   4: 84.4, 6: 15 },
+  wow5:     { 2: 4,    4: 1,   6: 12 },
+  wow10:    { 2: 0.5,  4: 0.2, 6: 4 },
   care_oolong: { 2: 2, 4: 0.2, 6: 4 },
   care_aloe:   { 2: 2, 4: 0.2, 6: 4 },
-  kegel:    { 2: 0.5,  4: 0.2, 6: 3 },
-  box1:     { 2: 0.5,  4: 0.2, 6: 3.5 },
-  box2:     { 2: 0,    4: 0.1, 6: 0.5 },
+  kegel:    { 2: 0,    4: 0,   6: 0 },
+  box1:     { 2: 0,    4: 0,   6: 0 },
+  box2:     { 2: 0,    4: 0,   6: 0 },
 };
-const ODDS_VERSION = 2;   // 改了奖品表就加一,旧的保存值不再用
-const SMALL = ['wow1', 'sachet3'];   // 小奖不用来吸引升级,抽不到就不显示
+const ODDS_VERSION = 4;   // 改了奖品表就加一,旧的保存值不再用
 const IDS = Object.keys(DEFAULT_ODDS);
 
 async function ensure(env) {
@@ -63,7 +61,7 @@ const drawAll = (odds, n) => [FIRST, ...Array.from({ length: n - 1 }, () => pick
 function locks(odds, n) {
   const out = {};
   for (const id of IDS) {
-    if (odds[id][n] > 0 || SMALL.includes(id)) continue;
+    if (odds[id][n] > 0) continue;
     const up = LINKS.find(l => l > n && odds[id][l] > 0);
     if (up) out[id] = up;
   }
