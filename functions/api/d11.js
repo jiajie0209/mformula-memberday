@@ -56,7 +56,8 @@ function pick(odds, z) {
   return live[live.length - 1];
 }
 const drawAll = odds => [FIRST, pick(odds, 'a'), pick(odds, 'a'), pick(odds, 'b'), pick(odds, 'b'), pick(odds, 'b')];
-const shown = odds => [FIRST, ...IDS.filter(id => odds[id].a > 0 || odds[id].b > 0)];
+const ALWAYS = ['box1', 'box2'];   // 就算 0% 也放在奖品列表:大配套由客服直接升级送
+const shown = odds => [FIRST, ...IDS.filter(id => ALWAYS.includes(id) || odds[id].a > 0 || odds[id].b > 0)];
 
 // 一个号码一份奖品;再进来拿回同一份。PRIMARY KEY 保证并发也只有一行
 async function play(env, b) {
