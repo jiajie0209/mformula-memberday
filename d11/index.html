@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>双11 拆红包</title>
+<style>
+:root{--navy:#062530;--gold:#F2C14E;--gold2:#F6D98B;--red:#C8102E;--light:#EFEFEF;--pk:#C8102E;--pk2:#A50D24;--pk3:#8E0F18;--pkb:#F2C14E;--seal:#F2C14E;--sealt:#7A1A14}
+body[data-tier="4"]{--pk:#0D5A70;--pk2:#07394B;--pk3:#052B38;--pkb:#F2C14E}
+body[data-tier="6"]{--pk:#E8B84A;--pk2:#CC9A30;--pk3:#A87A1E;--pkb:#FFF1C2;--seal:#C8102E;--sealt:#FFE9A8}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--navy);color:var(--light);font-family:"PingFang SC","Noto Sans SC","Microsoft YaHei",system-ui,sans-serif}
+.app{position:relative;max-width:460px;min-height:100vh;min-height:100dvh;margin:0 auto;padding:22px 16px 28px;background:var(--navy) url(img/bg.webp) top center/cover no-repeat;overflow:hidden}
+.tag{display:block;width:max-content;margin:0 auto;padding:4px 14px;border:1px solid rgba(242,193,78,.6);border-radius:99px;font-size:13px;color:var(--gold2)}
+h1{margin:10px 0 2px;text-align:center;font-size:42px;line-height:1.15;font-weight:800;color:var(--gold);letter-spacing:2px}
+.sub{margin:0;text-align:center;font-size:15px;color:#CFE0E5}
+.left{display:block;width:max-content;margin:12px auto 16px;padding:7px 20px;border-radius:99px;background:var(--red);color:#fff;font-size:15px;font-weight:700}
+.left b{font-size:21px;color:var(--gold2);margin:0 2px}
+.cap{margin:0 0 8px;text-align:center;font-size:13px;color:var(--gold2)}
+.show{display:flex;flex-wrap:wrap;justify-content:center;margin:0 -3px 12px}
+.ti{position:relative;flex:0 0 calc(25% - 6px);margin:0 3px 8px;background:rgba(239,239,239,.94);border-radius:10px;padding:6px 3px 5px;text-align:center}
+.ti img{display:block;width:100%;height:50px;object-fit:contain}
+.ti span{display:block;margin-top:3px;font-size:11px;line-height:1.25;color:var(--navy);font-weight:600}
+.ti.top{background:var(--gold);outline:2px solid var(--gold2)}
+.ti.top em{position:absolute;top:-9px;left:50%;transform:translateX(-50%);white-space:nowrap;padding:1px 8px;border-radius:99px;background:var(--red);color:#fff;font-size:11px;font-style:normal;font-weight:700}
+.gate{margin-top:20px;padding:20px 16px;border:1px solid rgba(242,193,78,.5);border-radius:14px;background:rgba(2,14,20,.55)}
+.gate label{display:block;margin-bottom:10px;text-align:center;font-size:16px;font-weight:700}
+.gate input{display:block;width:100%;padding:13px;border:0;border-radius:10px;background:#fff;color:var(--navy);font:inherit;font-size:18px;text-align:center}
+.err{min-height:18px;margin:6px 0 0;text-align:center;font-size:13px;color:#FFB4A8}
+.fine{margin:10px 0 0;text-align:center;font-size:12px;color:#A9C4CC}
+.grid{display:flex;flex-wrap:wrap;justify-content:center;margin:0 -4px}
+.pk{position:relative;flex:0 0 calc(25% - 8px);margin:4px;padding:0;border:1px solid var(--pkb);border-radius:10px;background:var(--pk);cursor:pointer;overflow:hidden;font:inherit}
+.pk::after{content:"";display:block;padding-top:133%}
+.pk::before{content:"";position:absolute;left:-6%;right:-6%;top:-18%;height:52%;border-radius:50%;background:var(--pk2)}
+.pk i{position:absolute;left:50%;top:34%;width:30px;height:30px;transform:translate(-50%,-50%);border-radius:50%;background:var(--seal);color:var(--sealt);font-style:normal;font-weight:800;font-size:14px;display:grid;place-items:center}
+.pk.wig{animation:wig .7s ease-in-out}
+.pk.done{background:rgba(239,239,239,.94);border-color:var(--gold2);cursor:default}
+.pk.done::before,.pk.done i{display:none}
+.pk.done img{position:absolute;top:3%;left:3%;width:94%;height:94%;object-fit:contain;animation:pop .4s ease-out}
+@keyframes wig{0%,100%{transform:rotate(0)}25%{transform:rotate(-5deg)}75%{transform:rotate(5deg)}}
+@keyframes pop{from{transform:scale(.4)}to{transform:scale(1)}}
+.ov{position:fixed;top:0;right:0;bottom:0;left:0;z-index:20;overflow:hidden;display:none;flex-direction:column;align-items:center;justify-content:center;padding:20px;background:rgba(2,14,20,.9)}
+.ov.on{display:flex}
+.stage{position:relative;width:260px;height:300px;display:grid;place-items:center}
+.rays{position:absolute;left:50%;top:50%;width:560px;height:560px;margin:-280px 0 0 -280px;border-radius:50%;background:repeating-conic-gradient(rgba(242,193,78,.34) 0 11deg,transparent 11deg 24deg);-webkit-mask:radial-gradient(circle,#000 18%,transparent 68%);mask:radial-gradient(circle,#000 18%,transparent 68%);opacity:0;transition:opacity .5s;animation:spin 14s linear infinite}
+.ov.big .rays{background:repeating-conic-gradient(rgba(242,193,78,.6) 0 11deg,transparent 11deg 24deg)}
+.bp{position:relative;width:200px;height:270px;perspective:800px}
+.bp-back{position:absolute;top:0;right:0;bottom:0;left:0;background:var(--pk3);border-radius:16px;transition:opacity .35s .3s}
+.bp-prize{position:absolute;left:50%;top:50%;width:250px;height:250px;object-fit:contain;transform:translate(-50%,-34%) scale(.4);opacity:0;z-index:2;transition:transform .75s cubic-bezier(.2,1.55,.4,1) .12s,opacity .25s .12s}
+.bp-front{position:absolute;left:0;right:0;bottom:0;height:74%;background:var(--pk);border-radius:0 0 16px 16px;z-index:3;transition:transform .55s ease-in,opacity .4s ease-in .15s}
+.bp-flap{position:absolute;left:0;right:0;top:0;height:44%;background:var(--pk2);border-radius:16px 16px 50% 50%/16px 16px 34% 34%;transform-origin:top;z-index:4;transition:transform .4s,opacity .3s .2s}
+.bp-seal{position:absolute;left:50%;top:44%;width:66px;height:66px;margin:-33px 0 0 -33px;border-radius:50%;background:var(--seal);color:var(--sealt);font-weight:800;font-size:24px;display:grid;place-items:center;z-index:5;transition:transform .35s}
+.bp.shake{animation:shake .8s ease-in-out}
+.bp.open .bp-back{opacity:0}
+.bp.open .bp-flap{transform:rotateX(170deg);opacity:0}
+.bp.open .bp-seal{transform:scale(0) rotate(200deg)}
+.bp.open .bp-front{transform:translateY(130%);opacity:0}
+.bp.open .bp-prize{transform:translate(-50%,-50%) scale(1);opacity:1}
+.ov.opened .rays{opacity:1}
+@keyframes shake{0%,100%{transform:rotate(0)}15%{transform:rotate(-6deg) scale(1.03)}30%{transform:rotate(6deg) scale(1.05)}45%{transform:rotate(-7deg) scale(1.07)}60%{transform:rotate(7deg) scale(1.09)}80%{transform:rotate(-4deg) scale(1.06)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.res{position:relative;z-index:6;width:100%;max-width:340px;text-align:center;opacity:0;transform:translateY(14px);transition:opacity .35s,transform .35s;visibility:hidden}
+.res.in{opacity:1;transform:none;visibility:visible}
+.res p{margin:0}
+.res .a{font-size:15px;color:var(--gold2)}
+.res .b{margin:4px 0 2px;font-size:29px;line-height:1.2;font-weight:800;color:#fff}
+.ov.big .res .b{color:var(--gold)}
+.res .c{font-size:13px;color:#CFE0E5}
+.btn{display:block;width:100%;margin-top:16px;padding:14px;border:0;border-radius:12px;background:var(--gold);color:#3A2404;font:inherit;font-size:18px;font-weight:800;cursor:pointer;text-align:center;text-decoration:none}
+.sum h2{margin:18px 0 12px;text-align:center;font-size:24px;font-weight:800;color:var(--gold)}
+.row{display:flex;align-items:center;margin-bottom:8px;padding:8px 12px;border-radius:12px;background:rgba(239,239,239,.94);color:var(--navy)}
+.row img{width:56px;height:56px;margin-right:12px;object-fit:contain}
+.row b{flex:1;font-size:16px}
+.row.top{background:var(--gold)}
+.note{margin:12px 0 0;text-align:center;font-size:14px;color:#CFE0E5}
+@media(max-height:600px){.stage{transform:scale(.68);margin:-48px 0}}
+[hidden]{display:none!important}
+canvas{position:fixed;top:0;left:0;z-index:30;pointer-events:none}
+</style>
+</head>
+<body>
+<main class="app">
+  <span class="tag" id="tag"></span>
+  <h1 id="title"></h1>
+  <p class="sub" id="sub"></p>
+  <span class="left" id="left" hidden></span>
+
+  <section class="gate" id="gate">
+    <label for="cname">你的名字</label>
+    <input id="cname" autocomplete="name" maxlength="40" placeholder="写你的名字">
+    <label for="phone" id="plabel" style="margin-top:14px">下单的电话号码</label>
+    <input id="phone" inputmode="tel" autocomplete="tel" placeholder="0123456789 或 +65 81234567">
+    <p class="err" id="err"></p>
+    <button class="btn" id="go" style="margin-top:6px">开始拆红包</button>
+    <p class="fine">每个号码只能玩一次，号码只用来确认你的订单</p>
+  </section>
+
+
+  <section id="play" hidden>
+    <p class="cap">红包里面有这些</p>
+    <div class="show" id="show"></div>
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <section class="sum" id="sum" hidden>
+    <h2>你的双11 礼物</h2>
+    <div id="list"></div>
+    <p class="note">礼物会跟你的订单一起寄出</p>
+    <a class="btn" id="send">发给 Ah Kent</a>
+  </section>
+</main>
+
+<div class="ov" id="ov">
+  <div class="stage">
+    <div class="rays"></div>
+    <div class="bp" id="bp">
+      <div class="bp-back"></div>
+      <img class="bp-prize" id="bpImg" alt="">
+      <div class="bp-front"></div>
+      <div class="bp-flap"></div>
+      <div class="bp-seal">11</div>
+    </div>
+  </div>
+  <div class="res" id="res">
+    <p class="a" id="resA"></p>
+    <p class="b" id="resB"></p>
+    <p class="c">会跟你的订单一起寄出</p>
+    <button class="btn" id="next"></button>
+  </div>
+</div>
+<canvas id="fx"></canvas>
+
+<script src="shared.js"></script>
+<script>
+const POOL = PRIZES.map(p => ({...p, img:"img/" + p.id + ".webp", top:p.id === "box2"}));
+const TIERS = {
+  2: {tag:"2盒 双11 下单礼", title:"拆红包",     sub:"100% 有奖，拆开就知道"},
+  4: {tag:"4盒 双11 下单礼", title:"拆蓝金红包", sub:"4 个红包，100% 有奖"},
+  6: {tag:"6盒 双11 尊享礼", title:"拆至尊红包", sub:"6 个红包，100% 有奖"}
+};
+const $ = id => document.getElementById(id);
+const key = new URLSearchParams(location.search).get("k");
+const urlN = KEYS[key];
+let tier = 2, left = 0, who = "", phone = "", seq = [], cells = {}, busy = false;
+const byId = id => POOL.find(p => p.id === id);
+
+// progress on this phone only counts if it belongs to the prizes the server just returned
+function loadCells() {
+  try {
+    const saved = JSON.parse(localStorage.getItem("mf1111-" + phone));
+    return saved && JSON.stringify(saved.seq) === JSON.stringify(seq) ? saved.cells : {};
+  } catch (e) { return {}; }
+}
+
+function saveCells() {
+  try { localStorage.setItem("mf1111-" + phone, JSON.stringify({seq, cells})); } catch (e) {}
+}
+
+function look(n) {
+  tier = n;
+  document.body.dataset.tier = n;
+  $("tag").textContent = TIERS[n].tag;
+  $("title").textContent = TIERS[n].title;
+  $("sub").textContent = TIERS[n].sub;
+}
+
+// the admin name turns the phone box into a password box, same as the main site
+const isAdminName = v => String(v).trim().toLowerCase() === "mformulammd";
+
+function syncField() {
+  const a = isAdminName($("cname").value), p = $("phone");
+  p.type = a ? "password" : "text";
+  p.autocomplete = a ? "current-password" : "tel";
+  p.placeholder = a ? "" : "0123456789 或 +65 81234567";
+  $("plabel").textContent = a ? "密码" : "下单的电话号码";
+  $("go").textContent = a ? "登录" : "开始拆红包";
+}
+
+async function startGame() {
+  if ($("go").disabled) return;
+  const admin = isAdminName($("cname").value), name = cleanName($("cname").value), d = cleanPhone($("phone").value);
+  if (!name) { $("err").textContent = "请写你的名字"; return; }
+  if (admin && !$("phone").value) { $("err").textContent = "请写密码"; return; }
+  if (!admin && !d) { $("err").textContent = "请输入下单时用的电话号码"; return; }
+  if (!admin && !urlN) { $("err").textContent = "这个链接不对，请跟 Ah Kent 拿新的链接"; return; }
+  $("go").disabled = true; $("go").textContent = "请稍等";
+  try {
+    if (admin) {
+      const r = await adminLogin($("phone").value);
+      if (r.ok) { location.href = "admin"; return; }
+      $("err").textContent = "密码不对";
+    } else {
+      const r = await api({a:"play", name, phone:d, k:key});
+      if (r.ok) { who = name; phone = d; paint(r); }
+      else $("err").textContent = r.error === "closed" ? "活动还没开始，请等 Ah Kent 通知" : "网络不稳，再试一次";
+    }
+  } catch (e) {
+    $("err").textContent = "网络不稳，再试一次";
+  }
+  $("go").disabled = false; syncField();
+}
+
+function paint(r) {
+  const moved = r.n !== tier;
+  look(r.n);
+  seq = r.seq; cells = loadCells(); busy = false;
+  $("show").innerHTML = POOL.filter(p => r.show.includes(p.id)).map(p => `<div class="ti${p.top ? " top" : ""}">${p.top ? "<em>大奖</em>" : ""}<img src="${p.img}" alt=""><span>${p.short}</span></div>`).join("");
+  const g = $("grid"); g.innerHTML = "";
+  for (let i = 0; i < 11; i++) {
+    const b = document.createElement("button");
+    b.className = "pk"; b.dataset.i = i; b.innerHTML = "<i>11</i>"; b.setAttribute("aria-label", "红包 " + (i + 1));
+    b.onclick = () => openPacket(b);
+    if (cells[i]) markOpen(b, byId(cells[i]));
+    g.appendChild(b);
+  }
+  left = tier - Object.keys(cells).length;
+  $("gate").hidden = true; $("play").hidden = false; $("sum").hidden = true; $("left").hidden = false;
+  showLeft();
+  if (moved) $("sub").textContent = "这个号码已经玩过了，这是上次的红包";
+  if (left <= 0) { $("sub").textContent = "这个号码已经拆完了"; finish(); }
+}
+
+function markOpen(el, p) {
+  el.classList.add("done");
+  el.innerHTML = `<img src="${p.img}" alt="${p.name}">`;
+}
+
+function showLeft() {
+  $("left").innerHTML = left > 0 ? `你还有<b>${left}</b>次机会` : "全部拆完了";
+}
+
+function openPacket(el) {
+  if (busy || left <= 0 || el.classList.contains("done")) return;
+  busy = true;
+  const p = byId(seq[Object.keys(cells).length]);
+  cells[el.dataset.i] = p.id; left--; saveCells();
+  const ov = $("ov"), bp = $("bp"), res = $("res");
+  $("bpImg").src = p.img;
+  $("resA").textContent = p.top ? "大奖！恭喜你抽到" : "恭喜你抽到";
+  $("resB").textContent = p.name;
+  $("next").textContent = left > 0 ? `再拆一个（还有 ${left} 次）` : "看我的礼物";
+  ov.className = "ov on" + (p.top ? " big" : "");
+  res.classList.remove("in");
+  bp.className = "bp"; void bp.offsetWidth; bp.className = "bp shake";
+  setTimeout(() => {
+    bp.className = "bp open"; ov.classList.add("opened");
+    confetti(p.top ? 340 : 150);
+    try { navigator.vibrate && navigator.vibrate(p.top ? [80, 60, 160] : 60); } catch (e) {}
+  }, 850);
+  setTimeout(() => res.classList.add("in"), 1400);
+  markOpen(el, p);
+  showLeft();
+}
+
+$("next").onclick = () => {
+  $("ov").className = "ov"; busy = false;
+  if (left > 0) nudge(); else finish();
+};
+
+function finish() {
+  const count = {};
+  Object.values(cells).forEach(id => count[id] = (count[id] || 0) + 1);
+  $("list").innerHTML = POOL.filter(p => count[p.id]).map(p => `<div class="row${p.top ? " top" : ""}"><img src="${p.img}" alt=""><b>${p.name}</b><span>${count[p.id]} 次</span></div>`).join("");
+  const text = "Hi Kent，我是 " + who + "，我拆完红包了：" + POOL.filter(p => count[p.id]).map(p => p.name + "（" + count[p.id] + " 次）").join("，");
+  $("send").href = "https://wa.me/601135155309?text=" + encodeURIComponent(text);
+  $("play").hidden = true; $("sum").hidden = false;
+}
+
+function nudge() {
+  const a = [...document.querySelectorAll(".pk:not(.done)")];
+  if (!a.length) return;
+  const b = a[Math.floor(Math.random() * a.length)];
+  b.classList.remove("wig"); void b.offsetWidth; b.classList.add("wig");
+}
+setInterval(() => { if (!busy && left > 0) nudge(); }, 2200);
+
+let fxRun = 0;
+function confetti(n) {
+  const run = ++fxRun, c = $("fx"), x = c.getContext("2d");
+  c.width = innerWidth; c.height = innerHeight;
+  const col = ["#F2C14E", "#F6D98B", "#C8102E", "#FFFFFF", "#26768A"];
+  const ps = Array.from({length: n}, () => {
+    const a = Math.random() * Math.PI * 2, s = 3 + Math.random() * 9;
+    return {x: c.width / 2, y: c.height * .4, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 4, w: 5 + Math.random() * 6, h: 8 + Math.random() * 7, r: Math.random() * 6, vr: (Math.random() - .5) * .4, c: col[Math.floor(Math.random() * col.length)]};
+  });
+  let t = 0;
+  (function tick() {
+    if (run !== fxRun) return;
+    x.clearRect(0, 0, c.width, c.height);
+    ps.forEach(p => {
+      p.x += p.vx; p.y += p.vy; p.vy += .22; p.vx *= .99; p.r += p.vr;
+      x.save(); x.translate(p.x, p.y); x.rotate(p.r); x.fillStyle = p.c;
+      x.globalAlpha = Math.max(0, 1 - t / 130); x.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); x.restore();
+    });
+    if (++t < 130) requestAnimationFrame(tick); else x.clearRect(0, 0, c.width, c.height);
+  })();
+}
+
+$("go").onclick = startGame;
+$("phone").oninput = () => { $("err").textContent = ""; };
+$("cname").oninput = () => { $("err").textContent = ""; syncField(); };
+$("cname").onkeydown = $("phone").onkeydown = e => { if (e.key === "Enter") startGame(); };
+look(urlN || 2);
+syncField();
+</script>
+</body>
+</html>

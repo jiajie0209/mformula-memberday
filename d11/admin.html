@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>拆红包后台</title>
+<style>
+:root{--navy:#062530;--light:#EFEFEF;--line:#D9DEE0;--ok:#1B7A4B;--bad:#B3261E}
+*{box-sizing:border-box}
+body{margin:0;background:#F4F6F7;color:var(--navy);font-family:"PingFang SC","Noto Sans SC","Microsoft YaHei",system-ui,sans-serif}
+header{display:flex;justify-content:space-between;align-items:center;padding:16px;background:var(--navy);color:var(--light)}
+header h1{margin:0;font-size:20px}
+main{max-width:760px;margin:0 auto;padding:16px}
+.card{margin-bottom:16px;padding:16px;border:1px solid var(--line);border-radius:12px;background:#fff}
+.card h2{margin:0 0 12px;font-size:17px}
+label{display:block;margin:10px 0 4px;font-size:14px}
+input{width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;font:inherit;background:#fff;color:var(--navy)}
+button{padding:12px 18px;border:0;border-radius:8px;background:var(--navy);color:#fff;font:inherit;font-weight:700;cursor:pointer}
+button.ghost{background:transparent;border:1px solid var(--light);color:var(--light);padding:6px 12px;font-weight:400}
+button.small{padding:5px 9px;font-size:12px;font-weight:400;background:#fff;color:var(--bad);border:1px solid var(--bad)}
+button.open{background:var(--ok)}button.shut{background:var(--bad)}
+.wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{padding:8px 3px;border-bottom:1px solid var(--line);text-align:left}
+th{font-weight:600;color:#4B626A}
+td input{min-width:50px;padding:7px 2px;text-align:center}
+.sum td{font-weight:700;border-bottom:0}
+.good{color:var(--ok)}.warn{color:var(--bad)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:14px}
+.stat{padding:12px;border-radius:10px;background:#F4F6F7;font-size:14px}
+.stat b{display:block;margin-bottom:6px;font-size:15px}
+.stat div{display:flex;justify-content:space-between;gap:8px;margin-top:3px}
+.msg{min-height:20px;margin:10px 0 0;font-size:14px}
+.note{margin:8px 0 0;font-size:13px;color:#4B626A}
+.links{word-break:break-all;font-size:13px;line-height:1.7}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<header>
+  <h1>拆红包后台</h1>
+  <button class="ghost" id="out" hidden>登出</button>
+</header>
+<main>
+  <section class="card" id="login" style="max-width:380px;margin:40px auto">
+    <h2>登录</h2>
+    <form id="lf">
+      <label for="pass">后台密码</label>
+      <input id="pass" type="password" autocomplete="current-password">
+      <p class="msg warn" id="lerr"></p>
+      <button style="width:100%">登录</button>
+    </form>
+  </section>
+
+  <div id="panel" hidden>
+    <section class="card">
+      <h2>活动状态：<span id="state"></span></h2>
+      <button id="toggle"></button>
+      <p class="note">关闭时，新客人进不来；已经抽过的客人还是可以看回自己的奖品。</p>
+      <div class="links" id="links" style="margin-top:12px"></div>
+    </section>
+    <section class="card">
+      <h2>调整机率（%）</h2>
+      <div class="wrap"><table><thead><tr><th>奖品</th><th>成本</th><th>2盒</th><th>4盒</th><th>6盒</th></tr></thead><tbody id="rows"></tbody></table></div>
+      <div class="stats" id="stats"></div>
+      <p class="note" id="total"></p>
+      <p class="msg" id="smsg"></p>
+      <button id="save">保存机率</button>
+    </section>
+    <section class="card">
+      <h2>客人抽奖记录 <span id="count" style="font-weight:400;font-size:14px"></span></h2>
+      <button id="reload" style="margin-bottom:12px;padding:8px 14px">刷新记录</button>
+      <p class="msg warn" id="lmsg"></p>
+      <div class="stats" id="given" style="margin:0 0 12px"></div>
+      <div class="wrap"><table><thead><tr><th>时间</th><th>名字</th><th>电话</th><th>配套</th><th>抽中</th><th></th></tr></thead><tbody id="log"></tbody></table></div>
+      <p class="note">重置：删除这个号码的记录，客人可以重新抽。用在给错链接，或第二张单。</p>
+    </section>
+  </div>
+</main>
+<script src="shared.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const LINKS = {2:{price:308, base:104, limit:32, orders:60}, 4:{price:666, base:256, limit:35, orders:20}, 6:{price:1149, base:479, limit:43.2, orders:20}};
+const nameOf = id => (PRIZES.find(p => p.id === id) || {short:id}).short;
+let inputs = {}, open = false;
+
+function esc(s) { const d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
+function val(id, n) { return parseFloat(inputs[id][n].value) || 0; }
+function when(t) { return new Date(t).toLocaleString("en-GB", {timeZone:"Asia/Kuala_Lumpur", day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit"}); }
+
+function paintState() {
+  $("state").textContent = open ? "开放中" : "关闭";
+  $("state").className = open ? "good" : "warn";
+  $("toggle").textContent = open ? "关闭活动" : "开放活动";
+  $("toggle").className = open ? "shut" : "open";
+}
+
+function paintLinks() {
+  const base = location.origin + location.pathname.replace(/admin(\.html)?$/, "");
+  $("links").innerHTML = Object.entries(KEYS).map(([k, n]) => `${n}盒链接：${esc(base + "?k=" + k)}`).join("<br>");
+}
+
+function paintOdds(odds) {
+  const body = $("rows"); body.innerHTML = ""; inputs = {};
+  PRIZES.forEach(p => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${p.short}</td><td>RM${p.cost}</td>`;
+    inputs[p.id] = {};
+    [2, 4, 6].forEach(n => {
+      const td = document.createElement("td"), i = document.createElement("input");
+      i.type = "number"; i.min = 0; i.max = 100; i.step = "0.5"; i.value = odds[p.id][n];
+      i.setAttribute("aria-label", n + "盒 " + p.short); i.oninput = calc;
+      inputs[p.id][n] = i; td.appendChild(i); tr.appendChild(td);
+    });
+    body.appendChild(tr);
+  });
+  const s = document.createElement("tr"); s.className = "sum";
+  s.innerHTML = `<td>合计</td><td></td><td id="s2"></td><td id="s4"></td><td id="s6"></td>`;
+  body.appendChild(s);
+  calc();
+}
+
+function calc() {
+  let tot = 0, html = "";
+  [2, 4, 6].forEach(n => {
+    let sum = 0, avg = 0;
+    PRIZES.forEach(p => { const v = val(p.id, n); sum += v; avg += v / 100 * p.cost; });
+    const c = $("s" + n), ok = Math.abs(sum - 100) < 0.001;
+    c.textContent = Math.round(sum * 10) / 10 + "%"; c.className = ok ? "good" : "warn";
+    const L = LINKS[n], gift = avg * n, ratio = (L.base + gift) / L.price * 100;
+    tot += gift * L.orders;
+    html += `<div class="stat"><b>${n}盒（拆 ${n} 次）</b><div><span>每单礼物</span><span>RM${gift.toFixed(2)}</span></div><div><span>成本率</span><span class="${ratio > L.limit ? "warn" : "good"}">${ratio.toFixed(1)}%</span></div><div><span>10月上限</span><span>${L.limit}%</span></div><div><span>每单还赚</span><span>RM${Math.round(L.price - L.base - gift)}</span></div></div>`;
+  });
+  $("stats").innerHTML = html;
+  $("total").textContent = "100 单的礼物总成本：约 RM" + Math.round(tot).toLocaleString() + "（2盒 60 单、4盒 20 单、6盒 20 单）";
+  $("smsg").textContent = "";
+}
+
+function paintLog(rows) {
+  $("count").textContent = "（" + rows.length + " 位）";
+  const c = {};
+  rows.forEach(r => r.seq.forEach(id => c[id] = (c[id] || 0) + 1));
+  const cost = PRIZES.reduce((a, p) => a + (c[p.id] || 0) * p.cost, 0);
+  $("given").innerHTML = `<div class="stat"><b>已抽出</b>${PRIZES.filter(p => c[p.id]).map(p => `<div><span>${p.short}</span><span>${c[p.id]} 份</span></div>`).join("") || "<div>还没有</div>"}<div><span>礼物成本</span><span>RM${Math.round(cost).toLocaleString()}</span></div></div>`;
+  $("log").innerHTML = rows.map(r => `<tr><td>${esc(when(r.at))}</td><td>${esc(r.name)}</td><td>${esc(r.phone)}</td><td>${esc(r.link)}盒</td><td>${esc(r.seq.map(nameOf).join("、"))}</td><td><button class="small" data-reset="${esc(r.phone)}">重置</button></td></tr>`).join("");
+  document.querySelectorAll("[data-reset]").forEach(b => b.onclick = () => reset(b.dataset.reset));
+}
+
+async function fetchAll() {
+  const r = await api({a:"get"});
+  if (r.ok) { open = r.open; paintState(); paintLinks(); }
+  return r;
+}
+
+async function loadAll() {
+  const r = await fetchAll();
+  if (!r.ok) return false;
+  $("login").hidden = true; $("panel").hidden = false; $("out").hidden = false;
+  paintOdds(r.odds); paintLog(r.rows);
+  return true;
+}
+
+async function loadLog() {
+  $("lmsg").textContent = "";
+  try {
+    const r = await fetchAll();
+    if (r.ok) paintLog(r.rows); else $("lmsg").textContent = "拿不到资料，再试一次";
+  } catch (err) { $("lmsg").textContent = "网络不稳，再试一次"; }
+}
+
+async function reset(ph) {
+  if (!confirm("重置 " + ph + "？这个号码的奖品记录会删除，客人可以重新抽。")) return;
+  try {
+    const r = await api({a:"reset", phone:ph});
+    if (r.ok) loadLog(); else $("lmsg").textContent = "重置不到，再试一次";
+  } catch (err) { $("lmsg").textContent = "网络不稳，再试一次"; }
+}
+
+$("lf").onsubmit = async e => {
+  e.preventDefault();
+  $("lerr").textContent = "";
+  try {
+    const a = await adminLogin($("pass").value);
+    if (!a.ok) { $("lerr").textContent = "密码不对"; return; }
+    $("pass").value = "";
+    if (!(await loadAll())) $("lerr").textContent = "拿不到资料，再试一次";
+  } catch (err) { $("lerr").textContent = "网络不稳，再试一次"; }
+};
+
+$("toggle").onclick = async () => {
+  const next = !open;
+  if (!confirm(next ? "开放活动？客人马上可以开始抽奖。" : "关闭活动？新客人会进不来。")) return;
+  try {
+    const r = await api({a:"setOpen", open:next});
+    if (r.ok) { open = r.open; paintState(); } else $("lmsg").textContent = "改不到，再试一次";
+  } catch (err) { $("lmsg").textContent = "网络不稳，再试一次"; }
+};
+
+$("save").onclick = async () => {
+  const bad = [2, 4, 6].filter(n => Math.abs(PRIZES.reduce((a, p) => a + val(p.id, n), 0) - 100) >= 0.001);
+  const m = $("smsg");
+  if (PRIZES.some(p => [2, 4, 6].some(n => val(p.id, n) < 0))) { m.className = "msg warn"; m.textContent = "机率不能是负数"; return; }
+  if (bad.length) { m.className = "msg warn"; m.textContent = bad.map(n => n + "盒").join("、") + " 合计要等于 100%"; return; }
+  const odds = {};
+  PRIZES.forEach(p => { odds[p.id] = {2:val(p.id, 2), 4:val(p.id, 4), 6:val(p.id, 6)}; });
+  try {
+    const r = await api({a:"setOdds", odds});
+    m.className = r.ok ? "msg good" : "msg warn";
+    m.textContent = r.ok ? "已保存，新客人马上用这个机率" : "保存不到，再试一次";
+  } catch (err) { m.className = "msg warn"; m.textContent = "网络不稳，再试一次"; }
+};
+
+$("out").onclick = async () => {
+  try { await api({a:"logout"}); } catch (e) {}
+  $("panel").hidden = true; $("out").hidden = true; $("login").hidden = false;
+};
+
+$("reload").onclick = loadLog;
+loadAll().catch(() => {});
+</script>
+</body>
+</html>
