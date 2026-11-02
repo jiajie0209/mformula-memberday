@@ -660,8 +660,8 @@ async function d11Card(){                                       // 双11 拆红�
   if(!r||!r.ok) return '';
   const bd=r.open?CAMP_BADGE.running:['⏸ 未开放','cb-prep'];
   return `<a class="cl-card ${bd[1]}" href="/d11/admin" style="text-decoration:none">
-      <div class="cl-row"><span class="cl-title">双11 · 十一月拆红包</span><span class="cl-badge ${bd[1]}">${bd[0]}</span></div>
-      <div class="cl-meta">D11 · 🧧 拆红包 · 2026-11-02 ~ 2026-11-11</div>
+      <div class="cl-row"><span class="cl-title">双11 · 十一月惊喜礼</span><span class="cl-badge ${bd[1]}">${bd[0]}</span></div>
+      <div class="cl-meta">D11 · 🎁 惊喜礼 · 2026-11-02 ~ 2026-11-11</div>
       <div class="cl-mini">👥 ${r.players}</div>
       <div class="cl-go">管理 →</div></a>`;
 }

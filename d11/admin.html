@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex">
-<title>拆红包后台</title>
+<title>惊喜礼后台</title>
 <link rel="stylesheet" href="/styles.css">
 <style>
 html,body{height:auto}
@@ -37,7 +37,7 @@ td input{width:100%;min-width:48px;height:34px;border:1.5px solid var(--line);bo
 <body>
 <div id="phone" class="bare">
   <main id="main"><section id="page">
-    <div class="screen-head"><a class="back" href="/">‹ 活动列表</a><h2>双11 · 十一月拆红包</h2></div>
+    <div class="screen-head"><a class="back" href="/">‹ 活动列表</a><h2>双11 · 十一月惊喜礼</h2></div>
 
     <div class="adm-card" id="login">
       <div class="adm-h">🔐 后台登录</div>
@@ -46,12 +46,12 @@ td input{width:100%;min-width:48px;height:34px;border:1.5px solid var(--line);bo
     </div>
 
     <div id="panel" hidden>
-      <div class="cd-hero"><span class="cd-badge" id="state"></span><span class="cd-meta">D11 · 🧧 拆红包 · 2026-11-02 ~ 2026-11-11</span></div>
+      <div class="cd-hero"><span class="cd-badge" id="state"></span><span class="cd-meta">D11 · 🎁 惊喜礼 · 2026-11-02 ~ 2026-11-11</span></div>
 
       <div class="cd-sec">🎮 游戏预览</div>
       <div class="adm-card">
         <a class="pv-btn" href="./?preview=1" style="display:flex;align-items:center;justify-content:center;text-decoration:none">👁 浏览整个游戏</a>
-        <div class="adm-note">进去看到<b>完整的拆红包游戏</b> —— 能拆、能看礼物，和顾客玩的一模一样（预览，不影响真实数据）。</div>
+        <div class="adm-note">进去看到<b>完整的惊喜礼游戏</b> —— 能拆、能看礼物，和顾客玩的一模一样（预览，不影响真实数据）。</div>
       </div>
 
       <div class="cd-sec">📊 数据</div>
@@ -124,7 +124,7 @@ function paintState() {
 
 function paintLinks() {
   const url = location.origin + "/d11/";
-  $("links").innerHTML = `<div class="lk"><div><b>拆红包链接</b><span>${esc(url)}</span></div><button data-copy="${esc(url)}">复制</button></div>`;
+  $("links").innerHTML = `<div class="lk"><div><b>惊喜礼链接</b><span>${esc(url)}</span></div><button data-copy="${esc(url)}">复制</button></div>`;
   document.querySelectorAll("[data-copy]").forEach(b => b.onclick = () => copy(b));
 }
 
@@ -255,7 +255,7 @@ function exportCsv() {
   const lines = [["时间", "名字", "电话", "抽到的 6 样"].join(",")].concat(allRows.map(r => [when(r.at), r.name, "'" + r.phone, r.seq.map(nameOf).join("、")].map(cell).join(",")));
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob(["﻿" + lines.join("\n")], {type:"text/csv"}));
-  a.download = "双11拆红包记录.csv";
+  a.download = "双11惊喜礼记录.csv";
   document.body.appendChild(a); a.click(); a.remove();
 }
 

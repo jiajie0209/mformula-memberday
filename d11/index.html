@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>双11 拆红包</title>
+<title>双11 惊喜礼</title>
 <style>
 :root{--navy:#062530;--gold:#F2C14E;--gold2:#F6D98B;--red:#C8102E;--light:#EFEFEF;--pk:#C8102E;--pk2:#A50D24;--pk3:#8E0F18;--pkb:#F2C14E;--seal:#F2C14E;--sealt:#7A1A14}
 body[data-tier="4"]{--pk:#0D5A70;--pk2:#07394B;--pk3:#052B38;--pkb:#F2C14E}
@@ -89,9 +89,9 @@ canvas{position:fixed;top:0;left:0;z-index:30;pointer-events:none}
     <div class="pvbar" id="pvBar" hidden><span>👁 预览模式，不影响真实数据</span><a href="admin">退出</a></div>
     <div class="cdown" id="cdown"></div>
   </div>
-  <span class="tag" id="tag">MFormula 双11 礼物</span>
-  <h1 id="title">拆红包</h1>
-  <p class="sub" id="sub">6 个红包，100% 有奖</p>
+  <span class="tag" id="tag">MFormula 双11</span>
+  <h1 id="title">拆惊喜礼</h1>
+  <p class="sub" id="sub">6 份惊喜礼，一定有 RM50 现金回扣</p>
   <span class="left" id="left" hidden></span>
 
   <section class="gate" id="gate">
@@ -100,22 +100,22 @@ canvas{position:fixed;top:0;left:0;z-index:30;pointer-events:none}
     <label for="phone" id="plabel" style="margin-top:14px">你的电话号码</label>
     <input id="phone" inputmode="tel" autocomplete="tel" placeholder="0123456789 或 +65 81234567">
     <p class="err" id="err"></p>
-    <button class="btn" id="go" style="margin-top:6px">开始拆红包</button>
+    <button class="btn" id="go" style="margin-top:6px">开始拆惊喜礼</button>
     <p class="fine">每个号码只能玩一次</p>
   </section>
 
 
   <section id="play" hidden>
-    <p class="cap">双11 奖品</p>
+    <p class="cap">双11 惊喜礼</p>
     <div class="show" id="show"></div>
     <div class="grid" id="grid"></div>
   </section>
 
   <section class="sum" id="sum" hidden>
-    <h2>你的 6 份双11 礼物</h2>
+    <h2>你的 6 份惊喜礼</h2>
     <p class="note" style="margin:0 0 12px;color:#F6D98B;font-weight:700">记得截图发给 Ah Kent</p>
     <div id="list"></div>
-    <p class="note">礼物会跟你的订单一起寄出</p>
+    <p class="note">惊喜礼会跟你的订单一起寄出</p>
     <button class="btn" id="send">截图发给 Ah Kent</button>
     <p class="note" id="sendNote"></p>
   </section>
@@ -135,7 +135,7 @@ canvas{position:fixed;top:0;left:0;z-index:30;pointer-events:none}
   <div class="res" id="res">
     <p class="a" id="resA"></p>
     <p class="b" id="resB"></p>
-    <p class="c">会跟你的订单一起寄出</p>
+    <p class="c">惊喜礼会跟你的订单一起寄出</p>
     <button class="btn" id="next"></button>
   </div>
 </div>
@@ -173,7 +173,7 @@ function syncField() {
   p.autocomplete = a ? "current-password" : "tel";
   p.placeholder = a ? "" : "0123456789 或 +65 81234567";
   $("plabel").textContent = a ? "密码" : "你的电话号码";
-  $("go").textContent = a ? "登录" : "开始拆红包";
+  $("go").textContent = a ? "登录" : "开始拆惊喜礼";
 }
 
 async function startGame() {
@@ -259,7 +259,7 @@ function finish() {
   $("play").hidden = true; $("sum").hidden = false;
   const won = seq.map(byId);
   $("list").innerHTML = won.map(p => `<div class="row${p.top ? " top" : ""}"><img src="${p.img}" alt=""><b>${p.name}</b></div>`).join("");
-  message = "Hi Kent，我是 " + who + "，我拆完红包了：" + won.map(p => p.name).join("、");
+  message = "Hi Kent，我是 " + who + "，我拆完惊喜礼了：" + won.map(p => p.name).join("、");
   picture = drawPicture(won).catch(() => null);
 }
 
@@ -274,7 +274,7 @@ async function drawPicture(won) {
   x.fillStyle = "#062530"; x.fillRect(0, 0, W, H);
   x.textAlign = "center";
   x.fillStyle = "#F6D98B"; x.font = font(26, 400); x.fillText("MFormula 双11", W / 2, 62);
-  x.fillStyle = "#F2C14E"; x.font = font(52, 800); x.fillText("你的双11 礼物", W / 2, 132);
+  x.fillStyle = "#F2C14E"; x.font = font(52, 800); x.fillText("你的双11 惊喜礼", W / 2, 132);
   x.fillStyle = "#FFFFFF"; x.font = font(30, 700); x.fillText(who, W / 2, 192);
   x.fillStyle = "#CFE0E5"; x.font = font(24, 400); x.fillText("电话尾号 " + phone.slice(-4), W / 2, 232);
   const imgs = await Promise.all(won.map(p => loadImg(p.img)));
@@ -287,7 +287,7 @@ async function drawPicture(won) {
     x.textAlign = "left"; x.fillStyle = "#062530"; x.font = font(32, 700); x.fillText(p.name, 176, y + 66);
   });
   x.textAlign = "center"; x.fillStyle = "#CFE0E5"; x.font = font(24, 400);
-  x.fillText("礼物会跟你的订单一起寄出", W / 2, H - 28);
+  x.fillText("惊喜礼会跟你的订单一起寄出", W / 2, H - 28);
   return new Promise(ok => c.toBlob(ok, "image/png"));
 }
 
