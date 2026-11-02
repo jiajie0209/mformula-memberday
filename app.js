@@ -662,7 +662,7 @@ async function d11Card(){                                       // 双11 拆红�
   return `<a class="cl-card ${bd[1]}" href="/d11/admin" style="text-decoration:none">
       <div class="cl-row"><span class="cl-title">双11 · 十一月拆红包</span><span class="cl-badge ${bd[1]}">${bd[0]}</span></div>
       <div class="cl-meta">D11 · 🧧 拆红包 · 2026-11-02 ~ 2026-11-11</div>
-      <div class="cl-mini">👥 ${r.players} · 🧧 ${r.opens}</div>
+      <div class="cl-mini">👥 ${r.players} · 🛒 ${r.chosen}</div>
       <div class="cl-go">管理 →</div></a>`;
 }
 async function loadCampaignList(){

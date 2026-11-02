@@ -76,6 +76,14 @@ h1{margin:10px 0 2px;text-align:center;font-size:42px;line-height:1.15;font-weig
 @media(max-height:600px){.stage{transform:scale(.68);margin:-48px 0}}
 .pvbar{display:flex;justify-content:space-between;align-items:center;margin:-22px -16px 14px;padding:8px 14px;background:#6b3fa0;color:#fff;font-size:13px}
 .pvbar a{color:#fff;font-weight:700}
+.packs{display:flex;margin:0 -4px 12px}
+.pack{flex:1;margin:0 4px;padding:9px 4px;border:1.5px solid rgba(242,193,78,.6);border-radius:12px;background:rgba(2,14,20,.55);color:#fff;font:inherit;cursor:pointer}
+.pack b{display:block;font-size:18px}
+.pack span{display:block;margin-top:2px;font-size:12px;color:#CFE0E5}
+.pack.on{background:#F2C14E;border-color:#F2C14E;color:#3A2404}
+.pack.on span{color:#3A2404}
+.row .no{flex:0 0 24px;height:24px;margin-right:10px;border-radius:50%;background:#062530;color:#F6D98B;font-size:13px;font-weight:700;text-align:center;line-height:24px}
+.row.off{opacity:.42}
 [hidden]{display:none!important}
 canvas{position:fixed;top:0;left:0;z-index:30;pointer-events:none}
 </style>
@@ -83,19 +91,19 @@ canvas{position:fixed;top:0;left:0;z-index:30;pointer-events:none}
 <body>
 <main class="app">
   <div class="pvbar" id="pvBar" hidden><span>👁 预览模式，不影响真实数据</span><a href="admin">退出</a></div>
-  <span class="tag" id="tag"></span>
-  <h1 id="title"></h1>
-  <p class="sub" id="sub"></p>
+  <span class="tag" id="tag">MFormula 双11 礼物</span>
+  <h1 id="title">拆红包</h1>
+  <p class="sub" id="sub">6 个红包，100% 有奖</p>
   <span class="left" id="left" hidden></span>
 
   <section class="gate" id="gate">
     <label for="cname">你的名字</label>
     <input id="cname" autocomplete="name" maxlength="40" placeholder="写你的名字">
-    <label for="phone" id="plabel" style="margin-top:14px">下单的电话号码</label>
+    <label for="phone" id="plabel" style="margin-top:14px">你的电话号码</label>
     <input id="phone" inputmode="tel" autocomplete="tel" placeholder="0123456789 或 +65 81234567">
     <p class="err" id="err"></p>
     <button class="btn" id="go" style="margin-top:6px">开始拆红包</button>
-    <p class="fine">每个号码只能玩一次，号码只用来确认你的订单</p>
+    <p class="fine">每个号码只能玩一次</p>
   </section>
 
 
@@ -106,7 +114,9 @@ canvas{position:fixed;top:0;left:0;z-index:30;pointer-events:none}
   </section>
 
   <section class="sum" id="sum" hidden>
-    <h2>你的双11 礼物</h2>
+    <h2>你的 6 份双11 礼物</h2>
+    <p class="note" style="margin:0 0 10px">选你要的配套，按顺序拿礼物</p>
+    <div class="packs" id="packs"></div>
     <div id="list"></div>
     <p class="note">礼物会跟你的订单一起寄出</p>
     <button class="btn" id="send">截图发给 Ah Kent</button>
@@ -137,16 +147,10 @@ canvas{position:fixed;top:0;left:0;z-index:30;pointer-events:none}
 <script src="shared.js"></script>
 <script>
 const POOL = PRIZES.map(p => ({...p, img:"img/" + p.id + ".webp", top:p.id === "box2"}));
-const TIERS = {
-  2: {tag:"2盒 双11 下单礼", title:"拆红包",     sub:"100% 有奖，拆开就知道"},
-  4: {tag:"4盒 双11 下单礼", title:"拆蓝金红包", sub:"4 个红包，100% 有奖"},
-  6: {tag:"6盒 双11 尊享礼", title:"拆至尊红包", sub:"6 个红包，100% 有奖"}
-};
 const $ = id => document.getElementById(id);
-const key = new URLSearchParams(location.search).get("k");
-const urlN = KEYS[key];
 const preview = new URLSearchParams(location.search).get("preview") === "1";
-let tier = 2, left = 0, who = "", phone = "", seq = [], cells = {}, busy = false;
+const TOTAL = 6;
+let left = 0, who = "", phone = "", seq = [], cells = {}, pkg = 0, busy = false;
 const byId = id => POOL.find(p => p.id === id);
 
 // progress on this phone only counts if it belongs to the prizes the server just returned
@@ -163,14 +167,6 @@ function saveCells() {
   try { localStorage.setItem("mf1111-" + phone, JSON.stringify({seq, cells})); } catch (e) {}
 }
 
-function look(n) {
-  tier = n;
-  document.body.dataset.tier = n;
-  $("tag").textContent = TIERS[n].tag;
-  $("title").textContent = TIERS[n].title;
-  $("sub").textContent = TIERS[n].sub;
-}
-
 // the admin name turns the phone box into a password box, same as the main site
 const isAdminName = v => String(v).trim().toLowerCase() === "mformulammd";
 
@@ -179,7 +175,7 @@ function syncField() {
   p.type = a ? "password" : "text";
   p.autocomplete = a ? "current-password" : "tel";
   p.placeholder = a ? "" : "0123456789 或 +65 81234567";
-  $("plabel").textContent = a ? "密码" : "下单的电话号码";
+  $("plabel").textContent = a ? "密码" : "你的电话号码";
   $("go").textContent = a ? "登录" : "开始拆红包";
 }
 
@@ -188,8 +184,7 @@ async function startGame() {
   const admin = isAdminName($("cname").value), name = cleanName($("cname").value), d = cleanPhone($("phone").value);
   if (!name) { $("err").textContent = "请写你的名字"; return; }
   if (admin && !$("phone").value) { $("err").textContent = "请写密码"; return; }
-  if (!admin && !d) { $("err").textContent = "请输入下单时用的电话号码"; return; }
-  if (!admin && !urlN) { $("err").textContent = "这个链接不对，请跟 Ah Kent 拿新的链接"; return; }
+  if (!admin && !d) { $("err").textContent = "请输入你的电话号码"; return; }
   $("go").disabled = true; $("go").textContent = "请稍等";
   try {
     if (admin) {
@@ -197,7 +192,7 @@ async function startGame() {
       if (r.ok) { location.href = "admin"; return; }
       $("err").textContent = "密码不对";
     } else {
-      const r = await api({a:"play", name, phone:d, k:key});
+      const r = await api({a:"play", name, phone:d});
       if (r.ok) { who = name; phone = d; paint(r); }
       else $("err").textContent = r.error === "closed" ? "活动还没开始，请等 Ah Kent 通知" : "网络不稳，再试一次";
     }
@@ -208,16 +203,8 @@ async function startGame() {
 }
 
 function paint(r) {
-  const moved = r.n !== tier;
-  look(r.n);
-  seq = r.seq; cells = loadCells(); busy = false;
-  const lock = r.lock || {};
-  $("show").innerHTML = POOL.filter(p => r.show.includes(p.id) || lock[p.id]).map(p => {
-    // a prize from a bigger package shows with no tag; Kent explains it by voice
-    const cls = p.top ? " top" : "";
-    const tag = p.top && !lock[p.id] ? "<em>大奖</em>" : "";
-    return `<div class="ti${cls}">${tag}<img src="${p.img}" alt=""><span>${p.short}</span></div>`;
-  }).join("");
+  seq = r.seq; pkg = r.pkg || 0; cells = loadCells(); busy = false;
+  $("show").innerHTML = POOL.filter(p => r.show.includes(p.id)).map(p => `<div class="ti${p.top ? " top" : ""}">${p.top ? "<em>大奖</em>" : ""}<img src="${p.img}" alt=""><span>${p.short}</span></div>`).join("");
   const g = $("grid"); g.innerHTML = "";
   for (let i = 0; i < 11; i++) {
     const b = document.createElement("button");
@@ -226,10 +213,9 @@ function paint(r) {
     if (cells[i]) markOpen(b, byId(cells[i]));
     g.appendChild(b);
   }
-  left = tier - Object.keys(cells).length;
+  left = TOTAL - Object.keys(cells).length;
   $("gate").hidden = true; $("play").hidden = false; $("sum").hidden = true; $("left").hidden = false;
   showLeft();
-  if (moved) $("sub").textContent = "这个号码已经玩过了，这是上次的红包";
   if (left <= 0) { $("sub").textContent = "这个号码已经拆完了"; finish(); }
 }
 
@@ -273,26 +259,43 @@ $("next").onclick = () => {
 let picture = null, message = "";
 
 function finish() {
-  const count = {};
-  Object.values(cells).forEach(id => count[id] = (count[id] || 0) + 1);
-  const won = POOL.filter(p => count[p.id]);
-  $("list").innerHTML = won.map(p => `<div class="row${p.top ? " top" : ""}"><img src="${p.img}" alt=""><b>${p.name}</b><span>${count[p.id]} 次</span></div>`).join("");
-  message = "Hi Kent，我是 " + who + "，我拆完红包了：" + won.map(p => p.name + "（" + count[p.id] + " 次）").join("，");
-  picture = drawPicture(won, count).catch(() => null);
+  $("packs").innerHTML = Object.keys(TAKE).map(n => `<button class="pack" data-pkg="${n}"><b>${n}盒</b><span>${TAKE[n] === TOTAL ? "全部 6 个" : "拿前 " + TAKE[n] + " 个"}</span></button>`).join("");
+  document.querySelectorAll(".pack").forEach(b => b.onclick = () => selectPack(+b.dataset.pkg));
   $("play").hidden = true; $("sum").hidden = false;
+  paintList();
+}
+
+function paintList() {
+  const take = pkg ? TAKE[pkg] : TOTAL;
+  $("list").innerHTML = seq.map((id, i) => {
+    const p = byId(id);
+    return `<div class="row${p.top ? " top" : ""}${i < take ? "" : " off"}"><span class="no">${i + 1}</span><img src="${p.img}" alt=""><b>${p.name}</b></div>`;
+  }).join("");
+  document.querySelectorAll(".pack").forEach(b => b.classList.toggle("on", +b.dataset.pkg === pkg));
+  $("send").textContent = pkg ? "截图发给 Ah Kent" : "先选配套";
+  if (pkg) {
+    const won = seq.slice(0, take).map(byId);
+    message = "Hi Kent，我是 " + who + "，我要 " + pkg + "盒，我的礼物：" + won.map(p => p.name).join("、");
+    picture = drawPicture(won).catch(() => null);
+  }
+}
+
+function selectPack(n) {
+  pkg = n; $("sendNote").textContent = ""; paintList();
+  if (!preview) api({a:"choose", phone, pkg:n}).catch(() => {});
 }
 
 const loadImg = src => new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = src; });
 
 // the "screenshot": name, last 4 digits, package and prizes as one picture
-async function drawPicture(won, count) {
+async function drawPicture(won) {
   const W = 720, rowH = 124, H = 330 + won.length * rowH;
   const c = document.createElement("canvas"); c.width = W; c.height = H;
   const x = c.getContext("2d");
   const font = (px, weight) => `${weight} ${px}px "PingFang SC","Noto Sans SC","Microsoft YaHei",sans-serif`;
   x.fillStyle = "#062530"; x.fillRect(0, 0, W, H);
   x.textAlign = "center";
-  x.fillStyle = "#F6D98B"; x.font = font(26, 400); x.fillText(TIERS[tier].tag, W / 2, 62);
+  x.fillStyle = "#F6D98B"; x.font = font(26, 400); x.fillText("MFormula 双11 · " + pkg + "盒", W / 2, 62);
   x.fillStyle = "#F2C14E"; x.font = font(52, 800); x.fillText("你的双11 礼物", W / 2, 132);
   x.fillStyle = "#FFFFFF"; x.font = font(30, 700); x.fillText(who, W / 2, 192);
   x.fillStyle = "#CFE0E5"; x.font = font(24, 400); x.fillText("电话尾号 " + phone.slice(-4), W / 2, 232);
@@ -304,7 +307,6 @@ async function drawPicture(won, count) {
     const im = imgs[i], s = Math.min(92 / im.width, 92 / im.height);
     x.drawImage(im, 62 + (92 - im.width * s) / 2, y + 8 + (92 - im.height * s) / 2, im.width * s, im.height * s);
     x.textAlign = "left"; x.fillStyle = "#062530"; x.font = font(32, 700); x.fillText(p.name, 176, y + 66);
-    x.textAlign = "right"; x.font = font(28, 400); x.fillText(count[p.id] + " 次", W - 60, y + 64);
   });
   x.textAlign = "center"; x.fillStyle = "#CFE0E5"; x.font = font(24, 400);
   x.fillText("礼物会跟你的订单一起寄出", W / 2, H - 28);
@@ -312,6 +314,7 @@ async function drawPicture(won, count) {
 }
 
 async function sendResult() {
+  if (!pkg) { $("sendNote").textContent = "先选你要的配套"; return; }
   if (preview) { $("sendNote").textContent = "预览模式，不会发出去"; return; }
   const chat = "https://wa.me/601135155309?text=" + encodeURIComponent(message);
   const blob = await picture;
@@ -364,17 +367,16 @@ $("send").onclick = sendResult;
 $("phone").oninput = () => { $("err").textContent = ""; };
 $("cname").oninput = () => { $("err").textContent = ""; syncField(); };
 $("cname").onkeydown = $("phone").onkeydown = e => { if (e.key === "Enter") startGame(); };
-look(urlN || 2);
 syncField();
 
 async function startPreview() {
   try {
-    const r = await api({a:"preview", k:key});
+    const r = await api({a:"preview"});
     if (!r.ok) { $("err").textContent = "请先登录后台"; return; }
     who = "预览"; phone = "0000"; $("pvBar").hidden = false; paint(r);
   } catch (e) { $("err").textContent = "网络不稳，再试一次"; }
 }
-if (preview && urlN) startPreview();
+if (preview) startPreview();
 </script>
 </body>
 </html>

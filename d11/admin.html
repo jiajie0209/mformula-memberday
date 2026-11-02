@@ -50,21 +50,17 @@ td input{width:100%;min-width:48px;height:34px;border:1.5px solid var(--line);bo
 
       <div class="cd-sec">🎮 游戏预览</div>
       <div class="adm-card">
-        <div class="pv3">
-          <a class="pv-btn" href="./?k=x7k2&preview=1">👁 2盒</a>
-          <a class="pv-btn" href="./?k=q4m9&preview=1">👁 4盒</a>
-          <a class="pv-btn" href="./?k=z8p3&preview=1">👁 6盒</a>
-        </div>
+        <a class="pv-btn" href="./?preview=1" style="display:flex;align-items:center;justify-content:center;text-decoration:none">👁 浏览整个游戏</a>
         <div class="adm-note">进去看到<b>完整的拆红包游戏</b> —— 能拆、能看礼物，和顾客玩的一模一样（预览，不影响真实数据）。</div>
       </div>
 
       <div class="cd-sec">📊 数据</div>
       <div class="adm-stats">
         <div class="adm-stat"><div class="n" id="nPlayers">0</div><div class="l">参与人数</div></div>
-        <div class="adm-stat"><div class="n" id="nOpens">0</div><div class="l">总抽奖</div></div>
+        <div class="adm-stat"><div class="n" id="nChosen">0</div><div class="l">已选配套</div></div>
         <div class="adm-stat"><div class="n" id="nCost">RM0</div><div class="l">礼物成本</div></div>
       </div>
-      <div class="adm-card"><div class="adm-h">🎁 各奖中出（多少人抽到）</div><div id="given"></div></div>
+      <div class="adm-card"><div class="adm-h">🎁 各奖送出（已选配套的人）</div><div id="given"></div></div>
       <div class="adm-card"><div class="adm-h">🏆 中奖最多（按礼物成本）</div><div id="top"></div></div>
       <div class="adm-card">
         <div class="adm-h">🔎 查顾客（输电话查）</div>
@@ -76,22 +72,22 @@ td input{width:100%;min-width:48px;height:34px;border:1.5px solid var(--line);bo
         <div class="adm-h">📋 全部记录 <span id="count" style="font-weight:400;font-size:12px"></span></div>
         <div class="row2"><button id="reload" class="lead-btn">🔄 刷新</button><button id="csv" class="lead-btn">⬇️ 导出 CSV</button></div>
         <p class="msg warn" id="lmsg"></p>
-        <div class="wrap"><table><thead><tr><th>时间</th><th>名字</th><th>电话</th><th>配套</th><th>抽中</th></tr></thead><tbody id="log"></tbody></table></div>
+        <div class="wrap"><table><thead><tr><th>时间</th><th>名字</th><th>电话</th><th>配套</th><th>礼物</th></tr></thead><tbody id="log"></tbody></table></div>
       </div>
 
       <div class="cd-sec">📋 内容（设置）</div>
       <div class="adm-card">
-        <div class="adm-h">🔗 发给顾客的链接</div>
+        <div class="adm-h">🔗 发给顾客的链接（一条）</div>
         <div id="links"></div>
       </div>
       <div class="adm-card">
         <div class="adm-h">🎲 中奖概率（%）</div>
-        <div class="wrap"><table><thead><tr><th>奖品</th><th>成本</th><th>2盒</th><th>4盒</th><th>6盒</th></tr></thead><tbody id="rows"></tbody></table></div>
+        <div class="wrap"><table><thead><tr><th>奖品</th><th>成本</th><th>第 2–3 个</th><th>第 4–6 个</th></tr></thead><tbody id="rows"></tbody></table></div>
         <div id="stats" style="margin-top:8px"></div>
         <div class="adm-note" id="total"></div>
         <p class="msg" id="smsg"></p>
         <button id="save" class="lead-btn" style="margin-top:6px">💾 保存概率</button>
-        <div class="adm-note">每个顾客<b>第 1 个红包固定是 RM50 回扣</b>，这里的概率是第 2 个红包开始。每个配套要合计 100%。<b>0% = 抽不到</b>，但如果更大的配套抽得到，还是会显示在奖品列表。</div>
+        <div class="adm-note">每个顾客拆 6 个：<b>第 1 个固定 RM50 回扣</b>。选配套后按顺序拿：2盒第 1 个、4盒第 1–3 个、6盒全部。每一栏要合计 100%，<b>0% = 抽不到，也不会显示</b>。</div>
       </div>
 
       <div class="cd-sec">🎛 控制</div>
@@ -107,10 +103,12 @@ td input{width:100%;min-width:48px;height:34px;border:1.5px solid var(--line);bo
 <script>
 const $ = id => document.getElementById(id);
 const OFF = 50;   // first packet: RM50 back
-const LINKS = {2:{price:358, base:104, limit:32, orders:60}, 4:{price:716, base:256, limit:35, orders:20}, 6:{price:1199, base:441, limit:43.2, orders:20}};
+const LINKS = {2:{price:358, base:104, limit:35.7, orders:60}, 4:{price:716, base:256, limit:39.9, orders:20}, 6:{price:1199, base:441, limit:42.8, orders:20}};
+const ZONES = ["a", "b"];
+const taken = r => r.pkg ? r.seq.slice(0, TAKE[r.pkg]) : [];
 const byId = id => PRIZES.find(p => p.id === id);
 const nameOf = id => (byId(id) || {short:id}).short;
-const costOf = r => r.seq.reduce((a, id) => a + ((byId(id) || {}).cost || 0), 0);
+const costOf = r => taken(r).reduce((a, id) => a + ((byId(id) || {}).cost || 0), 0);
 let inputs = {}, open = false, allRows = [];
 
 function esc(s) { const d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
@@ -125,8 +123,8 @@ function paintState() {
 }
 
 function paintLinks() {
-  const base = location.origin + "/d11/";
-  $("links").innerHTML = Object.entries(KEYS).map(([k, n]) => `<div class="lk"><div><b>${n}盒链接</b><span>${esc(base + "?k=" + k)}</span></div><button data-copy="${esc(base + "?k=" + k)}">复制</button></div>`).join("");
+  const url = location.origin + "/d11/";
+  $("links").innerHTML = `<div class="lk"><div><b>拆红包链接</b><span>${esc(url)}</span></div><button data-copy="${esc(url)}">复制</button></div>`;
   document.querySelectorAll("[data-copy]").forEach(b => b.onclick = () => copy(b));
 }
 
@@ -148,33 +146,37 @@ function paintOdds(odds) {
     const tr = document.createElement("tr");
     tr.innerHTML = `<td>${p.short}</td><td>RM${p.cost}</td>`;
     inputs[p.id] = {};
-    [2, 4, 6].forEach(n => {
+    ZONES.forEach(z => {
       const td = document.createElement("td"), i = document.createElement("input");
-      i.type = "number"; i.min = 0; i.max = 100; i.step = "0.5"; i.value = odds[p.id][n];
-      i.setAttribute("aria-label", n + "盒 " + p.short); i.oninput = calc;
-      inputs[p.id][n] = i; td.appendChild(i); tr.appendChild(td);
+      i.type = "number"; i.min = 0; i.max = 100; i.step = "0.5"; i.value = odds[p.id][z];
+      i.setAttribute("aria-label", (z === "a" ? "第2-3个 " : "第4-6个 ") + p.short); i.oninput = calc;
+      inputs[p.id][z] = i; td.appendChild(i); tr.appendChild(td);
     });
     body.appendChild(tr);
   });
   const s = document.createElement("tr"); s.className = "sum";
-  s.innerHTML = `<td>合计</td><td></td><td id="s2"></td><td id="s4"></td><td id="s6"></td>`;
+  s.innerHTML = `<td>合计</td><td></td><td id="sa"></td><td id="sb"></td>`;
   body.appendChild(s);
   calc();
 }
 
 function calc() {
   let tot = 0, html = "";
-  [2, 4, 6].forEach(n => {
-    let sum = 0, avg = 0;
-    ODDS_PRIZES.forEach(p => { const v = val(p.id, n); sum += v; avg += v / 100 * p.cost; });
-    const c = $("s" + n), ok = Math.abs(sum - 100) < 0.001;
+  const avg = {};
+  ZONES.forEach(z => {
+    let sum = 0; avg[z] = 0;
+    ODDS_PRIZES.forEach(p => { const v = val(p.id, z); sum += v; avg[z] += v / 100 * p.cost; });
+    const c = $("s" + z), ok = Math.abs(sum - 100) < 0.001;
     c.textContent = Math.round(sum * 10) / 10 + "%"; c.className = ok ? "good" : "warn";
-    const L = LINKS[n], gift = avg * (n - 1), net = L.price - OFF, ratio = (L.base + gift) / net * 100;
+  });
+  const GIFT = {2:0, 4:2 * avg.a, 6:2 * avg.a + 3 * avg.b};
+  [2, 4, 6].forEach(n => {
+    const L = LINKS[n], gift = GIFT[n], net = L.price - OFF, ratio = (L.base + gift) / net * 100;
     tot += gift * L.orders;
     html += `<div class="pz-row"><span>${n}盒 · 礼物 RM${gift.toFixed(2)} · 还赚 RM${Math.round(net - L.base - gift)}</span><b class="${ratio > L.limit ? "warn" : "good"}">${ratio.toFixed(1)}% / ${L.limit}%</b></div>`;
   });
   $("stats").innerHTML = html;
-  $("total").textContent = "右边是成本率 / 10月上限。已算进 RM50 回扣。100 单的礼物总成本约 RM" + Math.round(tot).toLocaleString() + "（2盒 60 单、4盒 20 单、6盒 20 单，不含 RM50）。";
+  $("total").textContent = "右边是成本率 / 你定的上限。已算进 RM50 回扣。100 单的礼物总成本约 RM" + Math.round(tot).toLocaleString() + "（2盒 60 单、4盒 20 单、6盒 20 单，不含 RM50）。";
   $("smsg").textContent = "";
 }
 
@@ -182,13 +184,13 @@ function paintData(rows) {
   allRows = rows;
   $("count").textContent = "（" + rows.length + " 位）";
   $("nPlayers").textContent = rows.length;
-  $("nOpens").textContent = rows.reduce((a, r) => a + r.seq.length, 0);
+  $("nChosen").textContent = rows.filter(r => r.pkg).length;
   $("nCost").textContent = "RM" + Math.round(rows.reduce((a, r) => a + costOf(r), 0)).toLocaleString();
-  const people = PRIZES.map(p => [p, rows.filter(r => r.seq.includes(p.id)).length]).filter(x => x[1]).sort((a, b) => b[1] - a[1]);
+  const people = PRIZES.map(p => [p, rows.filter(r => taken(r).includes(p.id)).length]).filter(x => x[1]).sort((a, b) => b[1] - a[1]);
   $("given").innerHTML = people.map(([p, n]) => `<div class="pz-row"><span>${p.short}</span><b>${n} 人</b></div>`).join("") || '<div class="adm-empty">还没有</div>';
   const best = rows.slice().sort((a, b) => costOf(b) - costOf(a)).slice(0, 5);
   $("top").innerHTML = best.map((r, i) => `<div class="adm-lb"><span class="r ${i < 3 ? "top" : ""}">${i + 1}</span><span class="nm">${esc(r.name)}</span><span class="v">RM${costOf(r).toFixed(0)}</span></div>`).join("") || '<div class="adm-empty">还没有</div>';
-  $("log").innerHTML = rows.map(r => `<tr><td>${esc(when(r.at))}</td><td>${esc(r.name)}</td><td>${esc(r.phone)}</td><td>${esc(r.link)}盒</td><td>${esc(r.seq.map(nameOf).join("、"))}</td></tr>`).join("");
+  $("log").innerHTML = rows.map(r => `<tr><td>${esc(when(r.at))}</td><td>${esc(r.name)}</td><td>${esc(r.phone)}</td><td>${r.pkg ? esc(r.pkg) + "盒" : "未选"}</td><td>${esc((r.pkg ? taken(r) : r.seq).map(nameOf).join("、"))}</td></tr>`).join("");
 }
 
 function find() {
@@ -196,7 +198,7 @@ function find() {
   if (!d) { box.innerHTML = '<div class="cs-bad">电话号码不对</div>'; return; }
   const r = allRows.find(x => x.phone === d);
   if (!r) { box.innerHTML = '<div class="cs-bad">这个号码还没有抽过</div>'; return; }
-  box.innerHTML = `<div class="cs-card"><div class="cs-row"><b>${esc(r.name)}</b> · ${esc(r.phone)}</div><div class="cs-row">${esc(r.link)}盒 · ${esc(when(r.at))}</div><div class="cs-row">抽中：${esc(r.seq.map(nameOf).join("、"))}</div><button class="mini red" id="resetBtn" style="margin-top:8px">重置</button></div>`;
+  box.innerHTML = `<div class="cs-card"><div class="cs-row"><b>${esc(r.name)}</b> · ${esc(r.phone)}</div><div class="cs-row">${r.pkg ? esc(r.pkg) + "盒" : "还没选配套"} · ${esc(when(r.at))}</div><div class="cs-row">${r.pkg ? "拿到" : "抽到"}：${esc((r.pkg ? taken(r) : r.seq).map(nameOf).join("、"))}</div><button class="mini red" id="resetBtn" style="margin-top:8px">重置</button></div>`;
   $("resetBtn").onclick = () => reset(r.phone);
 }
 
@@ -233,7 +235,7 @@ async function reset(ph) {
 
 function exportCsv() {
   const cell = v => '"' + String(v).replace(/"/g, '""') + '"';
-  const lines = [["时间", "名字", "电话", "配套", "抽中"].join(",")].concat(allRows.map(r => [when(r.at), r.name, "'" + r.phone, r.link + "盒", r.seq.map(nameOf).join("、")].map(cell).join(",")));
+  const lines = [["时间", "名字", "电话", "配套", "抽中"].join(",")].concat(allRows.map(r => [when(r.at), r.name, "'" + r.phone, r.pkg ? r.pkg + "盒" : "未选", (r.pkg ? taken(r) : r.seq).map(nameOf).join("、")].map(cell).join(",")));
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob(["﻿" + lines.join("\n")], {type:"text/csv"}));
   a.download = "双11拆红包记录.csv";
@@ -261,12 +263,12 @@ $("toggle").onclick = async () => {
 };
 
 $("save").onclick = async () => {
-  const bad = [2, 4, 6].filter(n => Math.abs(ODDS_PRIZES.reduce((a, p) => a + val(p.id, n), 0) - 100) >= 0.001);
+  const bad = ZONES.filter(z => Math.abs(ODDS_PRIZES.reduce((a, p) => a + val(p.id, z), 0) - 100) >= 0.001);
   const m = $("smsg");
-  if (ODDS_PRIZES.some(p => [2, 4, 6].some(n => val(p.id, n) < 0))) { m.className = "msg warn"; m.textContent = "概率不能是负数"; return; }
-  if (bad.length) { m.className = "msg warn"; m.textContent = bad.map(n => n + "盒").join("、") + " 合计要等于 100%"; return; }
+  if (ODDS_PRIZES.some(p => ZONES.some(z => val(p.id, z) < 0))) { m.className = "msg warn"; m.textContent = "概率不能是负数"; return; }
+  if (bad.length) { m.className = "msg warn"; m.textContent = "每一栏合计都要等于 100%"; return; }
   const odds = {};
-  ODDS_PRIZES.forEach(p => { odds[p.id] = {2:val(p.id, 2), 4:val(p.id, 4), 6:val(p.id, 6)}; });
+  ODDS_PRIZES.forEach(p => { odds[p.id] = {a:val(p.id, "a"), b:val(p.id, "b")}; });
   try {
     const r = await api({a:"setOdds", odds});
     m.className = r.ok ? "msg good" : "msg warn";
