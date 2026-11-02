@@ -79,10 +79,6 @@ h1{margin:10px 0 2px;text-align:center;font-size:42px;line-height:1.15;font-weig
 .cdown{padding:8px 10px;background:#A50D24;color:#fff;font-size:14px;font-weight:700;text-align:center;white-space:nowrap}
 .cdown b{display:inline-block;min-width:26px;margin:0 2px;padding:1px 4px;border-radius:5px;background:#F2C14E;color:#5A1410;font-weight:800;font-variant-numeric:tabular-nums}
 .pvbar a{color:#fff;font-weight:700}
-.row.pick{width:100%;border:0;font:inherit;text-align:left;cursor:pointer}
-.row .no{flex:0 0 26px;height:26px;margin-right:10px;border-radius:50%;border:2px solid #7D93A0;background:#fff;color:#fff;font-size:15px;font-weight:800;text-align:center;line-height:22px}
-.row.on{outline:3px solid #F2C14E}
-.row.on .no{border-color:#1B7A4B;background:#1B7A4B}
 [hidden]{display:none!important}
 canvas{position:fixed;top:0;left:0;z-index:30;pointer-events:none}
 </style>
@@ -117,7 +113,7 @@ canvas{position:fixed;top:0;left:0;z-index:30;pointer-events:none}
 
   <section class="sum" id="sum" hidden>
     <h2>你的 6 份双11 礼物</h2>
-    <p class="note" style="margin:0 0 12px">点你要的礼物：2盒选 1 样，4盒选 3 样，6盒全部 6 样</p>
+    <p class="note" style="margin:0 0 12px;color:#F6D98B;font-weight:700">记得截图发给 Ah Kent</p>
     <div id="list"></div>
     <p class="note">礼物会跟你的订单一起寄出</p>
     <button class="btn" id="send">截图发给 Ah Kent</button>
@@ -151,7 +147,7 @@ const POOL = PRIZES.map(p => ({...p, img:"img/" + p.id + ".webp", top:p.id === "
 const $ = id => document.getElementById(id);
 const preview = new URLSearchParams(location.search).get("preview") === "1";
 const TOTAL = 6;
-let left = 0, who = "", phone = "", seq = [], cells = {}, picks = [], busy = false;
+let left = 0, who = "", phone = "", seq = [], cells = {}, busy = false;
 const byId = id => POOL.find(p => p.id === id);
 
 // progress on this phone only counts if it belongs to the prizes the server just returned
@@ -204,7 +200,7 @@ async function startGame() {
 }
 
 function paint(r) {
-  seq = r.seq; picks = r.picks || []; cells = loadCells(); busy = false;
+  seq = r.seq; cells = loadCells(); busy = false;
   $("show").innerHTML = POOL.filter(p => r.show.includes(p.id)).map(p => `<div class="ti${p.top ? " top" : ""}">${p.top ? "<em>大奖</em>" : ""}<img src="${p.img}" alt=""><span>${p.short}</span></div>`).join("");
   const g = $("grid"); g.innerHTML = "";
   for (let i = 0; i < 11; i++) {
@@ -261,42 +257,23 @@ let picture = null, message = "";
 
 function finish() {
   $("play").hidden = true; $("sum").hidden = false;
-  paintList();
-}
-
-function paintList() {
-  $("list").innerHTML = seq.map((id, i) => {
-    const p = byId(id), on = picks.includes(i);
-    return `<button class="row pick${p.top ? " top" : ""}${on ? " on" : ""}" data-i="${i}"><span class="no">${on ? "✓" : ""}</span><img src="${p.img}" alt=""><b>${p.name}</b></button>`;
-  }).join("");
-  document.querySelectorAll(".row.pick").forEach(b => b.onclick = () => togglePick(+b.dataset.i));
-  const pkg = PACK_OF[picks.length];
-  $("send").textContent = pkg ? `截图发给 Ah Kent（${pkg}盒）` : "选好礼物才能发";
-  if (pkg) {
-    const won = picks.map(i => byId(seq[i]));
-    message = "Hi Kent，我是 " + who + "，我要 " + pkg + "盒，我的礼物：" + won.map(p => p.name).join("、");
-    picture = drawPicture(won, pkg).catch(() => null);
-  }
-}
-
-function togglePick(i) {
-  picks = picks.includes(i) ? picks.filter(x => x !== i) : [...picks, i].sort((a, b) => a - b);
-  $("sendNote").textContent = "";
-  paintList();
-  if (!preview && PACK_OF[picks.length]) api({a:"choose", phone, picks}).catch(() => {});
+  const won = seq.map(byId);
+  $("list").innerHTML = won.map(p => `<div class="row${p.top ? " top" : ""}"><img src="${p.img}" alt=""><b>${p.name}</b></div>`).join("");
+  message = "Hi Kent，我是 " + who + "，我拆完红包了：" + won.map(p => p.name).join("、");
+  picture = drawPicture(won).catch(() => null);
 }
 
 const loadImg = src => new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = src; });
 
 // the "screenshot": name, last 4 digits, package and prizes as one picture
-async function drawPicture(won, pkg) {
+async function drawPicture(won) {
   const W = 720, rowH = 124, H = 330 + won.length * rowH;
   const c = document.createElement("canvas"); c.width = W; c.height = H;
   const x = c.getContext("2d");
   const font = (px, weight) => `${weight} ${px}px "PingFang SC","Noto Sans SC","Microsoft YaHei",sans-serif`;
   x.fillStyle = "#062530"; x.fillRect(0, 0, W, H);
   x.textAlign = "center";
-  x.fillStyle = "#F6D98B"; x.font = font(26, 400); x.fillText("MFormula 双11 · " + pkg + "盒", W / 2, 62);
+  x.fillStyle = "#F6D98B"; x.font = font(26, 400); x.fillText("MFormula 双11", W / 2, 62);
   x.fillStyle = "#F2C14E"; x.font = font(52, 800); x.fillText("你的双11 礼物", W / 2, 132);
   x.fillStyle = "#FFFFFF"; x.font = font(30, 700); x.fillText(who, W / 2, 192);
   x.fillStyle = "#CFE0E5"; x.font = font(24, 400); x.fillText("电话尾号 " + phone.slice(-4), W / 2, 232);
@@ -315,7 +292,6 @@ async function drawPicture(won, pkg) {
 }
 
 async function sendResult() {
-  if (!PACK_OF[picks.length]) { $("sendNote").textContent = "2盒选 1 样，4盒选 3 样，6盒全部 6 样"; return; }
   if (preview) { $("sendNote").textContent = "预览模式，不会发出去"; return; }
   const chat = "https://wa.me/601135155309?text=" + encodeURIComponent(message);
   const blob = await picture;

@@ -57,22 +57,22 @@ td input{width:100%;min-width:48px;height:34px;border:1.5px solid var(--line);bo
       <div class="cd-sec">📊 数据</div>
       <div class="adm-stats">
         <div class="adm-stat"><div class="n" id="nPlayers">0</div><div class="l">参与人数</div></div>
-        <div class="adm-stat"><div class="n" id="nChosen">0</div><div class="l">已选礼物</div></div>
-        <div class="adm-stat"><div class="n" id="nCost">RM0</div><div class="l">礼物成本</div></div>
+        <div class="adm-stat"><div class="n" id="nToday">0</div><div class="l">今天参与</div></div>
+        <div class="adm-stat"><div class="n" id="nOpens">0</div><div class="l">总红包</div></div>
       </div>
-      <div class="adm-card"><div class="adm-h">🎁 各奖送出（顾客选的）</div><div id="given"></div></div>
-      <div class="adm-card"><div class="adm-h">🏆 中奖最多（按礼物成本）</div><div id="top"></div></div>
+      <div class="adm-card"><div class="adm-h">🎁 各奖中出（多少人抽到）</div><div id="given"></div></div>
+      <div class="adm-card"><div class="adm-h">🏆 抽得最好（6 样的总成本）</div><div id="top"></div></div>
       <div class="adm-card">
         <div class="adm-h">🔎 查顾客（输电话查）</div>
         <div class="code-add"><input id="findPhone" placeholder="顾客电话 如 0123456789" inputmode="tel" style="flex:1"><button id="findBtn">查</button></div>
         <div id="findResult"></div>
-        <div class="adm-note">给错链接或第二张单：查到顾客后按「重置」，顾客就能重新抽。</div>
+        <div class="adm-note">第二张单：查到顾客后按「重置」，顾客就能重新抽。</div>
       </div>
       <div class="adm-card">
         <div class="adm-h">📋 全部记录 <span id="count" style="font-weight:400;font-size:12px"></span></div>
         <div class="row2"><button id="reload" class="lead-btn">🔄 刷新</button><button id="csv" class="lead-btn">⬇️ 导出 CSV</button></div>
         <p class="msg warn" id="lmsg"></p>
-        <div class="wrap"><table><thead><tr><th>时间</th><th>名字</th><th>电话</th><th>配套</th><th>礼物</th></tr></thead><tbody id="log"></tbody></table></div>
+        <div class="wrap"><table><thead><tr><th>时间</th><th>名字</th><th>电话</th><th>抽到的 6 样</th></tr></thead><tbody id="log"></tbody></table></div>
       </div>
 
       <div class="cd-sec">📋 内容（设置）</div>
@@ -87,7 +87,7 @@ td input{width:100%;min-width:48px;height:34px;border:1.5px solid var(--line);bo
         <div class="adm-note" id="total"></div>
         <p class="msg" id="smsg"></p>
         <button id="save" class="lead-btn" style="margin-top:6px">💾 保存概率</button>
-        <div class="adm-note">每个顾客拆 6 个：<b>第 1 个固定 RM50 回扣</b>，再自己选：2盒 1 样、4盒 3 样、6盒全部。成本率按顾客挑最贵的算。每一栏要合计 100%，<b>0% = 抽不到，也不会显示</b>；1盒和 2盒除外，0% 也会显示，但抽不到。</div>
+        <div class="adm-note">每个顾客拆 6 个：<b>第 1 个固定 RM50 回扣</b>，再跟客服选：2盒 1 样、4盒 3 样、6盒全部。成本率按顾客挑最贵的算。每一栏要合计 100%，<b>0% = 抽不到，也不会显示</b>；1盒和 2盒除外，0% 也会显示，但抽不到。</div>
       </div>
 
       <div class="cd-sec">🎛 控制</div>
@@ -105,10 +105,10 @@ const $ = id => document.getElementById(id);
 const OFF = 50;   // first packet: RM50 back
 const LINKS = {2:{price:358, base:104, limit:35.7, orders:60}, 4:{price:716, base:256, limit:39.9, orders:20}, 6:{price:1199, base:441, limit:42.8, orders:20}};
 const ZONES = ["a", "b"];
-const taken = r => r.picks.map(i => r.seq[i]);
+
 const byId = id => PRIZES.find(p => p.id === id);
 const nameOf = id => (byId(id) || {short:id}).short;
-const costOf = r => taken(r).reduce((a, id) => a + ((byId(id) || {}).cost || 0), 0);
+const costOf = r => r.seq.reduce((a, id) => a + ((byId(id) || {}).cost || 0), 0);
 let inputs = {}, open = false, allRows = [];
 
 function esc(s) { const d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
@@ -200,13 +200,14 @@ function paintData(rows) {
   allRows = rows;
   $("count").textContent = "（" + rows.length + " 位）";
   $("nPlayers").textContent = rows.length;
-  $("nChosen").textContent = rows.filter(r => r.pkg).length;
-  $("nCost").textContent = "RM" + Math.round(rows.reduce((a, r) => a + costOf(r), 0)).toLocaleString();
-  const people = PRIZES.map(p => [p, rows.filter(r => taken(r).includes(p.id)).length]).filter(x => x[1]).sort((a, b) => b[1] - a[1]);
+  const today = new Date().toLocaleDateString("en-GB", {timeZone:"Asia/Kuala_Lumpur"});
+  $("nToday").textContent = rows.filter(r => new Date(r.at).toLocaleDateString("en-GB", {timeZone:"Asia/Kuala_Lumpur"}) === today).length;
+  $("nOpens").textContent = rows.reduce((a, r) => a + r.seq.length, 0);
+  const people = PRIZES.map(p => [p, rows.filter(r => r.seq.includes(p.id)).length]).filter(x => x[1]).sort((a, b) => b[1] - a[1]);
   $("given").innerHTML = people.map(([p, n]) => `<div class="pz-row"><span>${p.short}</span><b>${n} 人</b></div>`).join("") || '<div class="adm-empty">还没有</div>';
   const best = rows.slice().sort((a, b) => costOf(b) - costOf(a)).slice(0, 5);
   $("top").innerHTML = best.map((r, i) => `<div class="adm-lb"><span class="r ${i < 3 ? "top" : ""}">${i + 1}</span><span class="nm">${esc(r.name)}</span><span class="v">RM${costOf(r).toFixed(0)}</span></div>`).join("") || '<div class="adm-empty">还没有</div>';
-  $("log").innerHTML = rows.map(r => `<tr><td>${esc(when(r.at))}</td><td>${esc(r.name)}</td><td>${esc(r.phone)}</td><td>${r.pkg ? esc(r.pkg) + "盒" : "未选"}</td><td>${esc((r.pkg ? taken(r) : r.seq).map(nameOf).join("、"))}</td></tr>`).join("");
+  $("log").innerHTML = rows.map(r => `<tr><td>${esc(when(r.at))}</td><td>${esc(r.name)}</td><td>${esc(r.phone)}</td><td>${esc(r.seq.map(nameOf).join("、"))}</td></tr>`).join("");
 }
 
 function find() {
@@ -214,7 +215,7 @@ function find() {
   if (!d) { box.innerHTML = '<div class="cs-bad">电话号码不对</div>'; return; }
   const r = allRows.find(x => x.phone === d);
   if (!r) { box.innerHTML = '<div class="cs-bad">这个号码还没有抽过</div>'; return; }
-  box.innerHTML = `<div class="cs-card"><div class="cs-row"><b>${esc(r.name)}</b> · ${esc(r.phone)}</div><div class="cs-row">${r.pkg ? esc(r.pkg) + "盒" : "还没选配套"} · ${esc(when(r.at))}</div><div class="cs-row">${r.pkg ? "拿到" : "抽到"}：${esc((r.pkg ? taken(r) : r.seq).map(nameOf).join("、"))}</div><button class="mini red" id="resetBtn" style="margin-top:8px">重置</button></div>`;
+  box.innerHTML = `<div class="cs-card"><div class="cs-row"><b>${esc(r.name)}</b> · ${esc(r.phone)}</div><div class="cs-row">${esc(when(r.at))}</div><div class="cs-row">抽到：${esc(r.seq.map(nameOf).join("、"))}</div><button class="mini red" id="resetBtn" style="margin-top:8px">重置</button></div>`;
   $("resetBtn").onclick = () => reset(r.phone);
 }
 
@@ -251,7 +252,7 @@ async function reset(ph) {
 
 function exportCsv() {
   const cell = v => '"' + String(v).replace(/"/g, '""') + '"';
-  const lines = [["时间", "名字", "电话", "配套", "抽中"].join(",")].concat(allRows.map(r => [when(r.at), r.name, "'" + r.phone, r.pkg ? r.pkg + "盒" : "未选", (r.pkg ? taken(r) : r.seq).map(nameOf).join("、")].map(cell).join(",")));
+  const lines = [["时间", "名字", "电话", "抽到的 6 样"].join(",")].concat(allRows.map(r => [when(r.at), r.name, "'" + r.phone, r.seq.map(nameOf).join("、")].map(cell).join(",")));
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob(["﻿" + lines.join("\n")], {type:"text/csv"}));
   a.download = "双11拆红包记录.csv";
