@@ -3,6 +3,7 @@ const KEYS = {x7k2:2, q4m9:4, z8p3:6};
 
 // cost = 成本 RM;机率存在服务器,后台可改
 const PRIZES = [
+  {id:"rm50",     name:"RM50 现金回扣", short:"RM50 回扣", cost:0, fixed:true},
   {id:"sachet5",  name:"5包 MFormula",  short:"5包",     cost:4.5},
   {id:"sachet10", name:"10包 MFormula", short:"10包",    cost:9},
   {id:"wow2",     name:"WoW Care x2",   short:"WoW x2",  cost:4},
@@ -14,6 +15,8 @@ const PRIZES = [
   {id:"box1",     name:"1盒 MFormula",  short:"1盒",     cost:38},
   {id:"box2",     name:"2盒 MFormula",  short:"2盒",     cost:76}
 ];
+
+const ODDS_PRIZES = PRIZES.filter(p => !p.fixed);   // fixed = every customer's first packet, not part of the odds
 
 function cleanPhone(v) {
   let d = String(v == null ? "" : v).replace(/\D/g, "").replace(/^00/, "");

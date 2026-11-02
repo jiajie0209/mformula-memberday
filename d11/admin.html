@@ -91,7 +91,7 @@ td input{width:100%;min-width:48px;height:34px;border:1.5px solid var(--line);bo
         <div class="adm-note" id="total"></div>
         <p class="msg" id="smsg"></p>
         <button id="save" class="lead-btn" style="margin-top:6px">💾 保存概率</button>
-        <div class="adm-note">每个配套要合计 100%。<b>0% = 抽不到</b>，但如果更大的配套抽得到，还是会显示在奖品列表。</div>
+        <div class="adm-note">每个顾客<b>第 1 个红包固定是 RM50 回扣</b>，这里的概率是第 2 个红包开始。每个配套要合计 100%。<b>0% = 抽不到</b>，但如果更大的配套抽得到，还是会显示在奖品列表。</div>
       </div>
 
       <div class="cd-sec">🎛 控制</div>
@@ -106,7 +106,8 @@ td input{width:100%;min-width:48px;height:34px;border:1.5px solid var(--line);bo
 <script src="shared.js"></script>
 <script>
 const $ = id => document.getElementById(id);
-const LINKS = {2:{price:358, base:104, limit:32, orders:60}, 4:{price:666, base:256, limit:35, orders:20}, 6:{price:1149, base:441, limit:43.2, orders:20}};
+const OFF = 50;   // first packet: RM50 back
+const LINKS = {2:{price:358, base:104, limit:32, orders:60}, 4:{price:716, base:256, limit:35, orders:20}, 6:{price:1199, base:441, limit:43.2, orders:20}};
 const byId = id => PRIZES.find(p => p.id === id);
 const nameOf = id => (byId(id) || {short:id}).short;
 const costOf = r => r.seq.reduce((a, id) => a + ((byId(id) || {}).cost || 0), 0);
@@ -143,7 +144,7 @@ async function copy(b) {
 
 function paintOdds(odds) {
   const body = $("rows"); body.innerHTML = ""; inputs = {};
-  PRIZES.forEach(p => {
+  ODDS_PRIZES.forEach(p => {
     const tr = document.createElement("tr");
     tr.innerHTML = `<td>${p.short}</td><td>RM${p.cost}</td>`;
     inputs[p.id] = {};
@@ -165,15 +166,15 @@ function calc() {
   let tot = 0, html = "";
   [2, 4, 6].forEach(n => {
     let sum = 0, avg = 0;
-    PRIZES.forEach(p => { const v = val(p.id, n); sum += v; avg += v / 100 * p.cost; });
+    ODDS_PRIZES.forEach(p => { const v = val(p.id, n); sum += v; avg += v / 100 * p.cost; });
     const c = $("s" + n), ok = Math.abs(sum - 100) < 0.001;
     c.textContent = Math.round(sum * 10) / 10 + "%"; c.className = ok ? "good" : "warn";
-    const L = LINKS[n], gift = avg * n, ratio = (L.base + gift) / L.price * 100;
+    const L = LINKS[n], gift = avg * (n - 1), net = L.price - OFF, ratio = (L.base + gift) / net * 100;
     tot += gift * L.orders;
-    html += `<div class="pz-row"><span>${n}盒 · 礼物 RM${gift.toFixed(2)} · 还赚 RM${Math.round(L.price - L.base - gift)}</span><b class="${ratio > L.limit ? "warn" : "good"}">${ratio.toFixed(1)}% / ${L.limit}%</b></div>`;
+    html += `<div class="pz-row"><span>${n}盒 · 礼物 RM${gift.toFixed(2)} · 还赚 RM${Math.round(net - L.base - gift)}</span><b class="${ratio > L.limit ? "warn" : "good"}">${ratio.toFixed(1)}% / ${L.limit}%</b></div>`;
   });
   $("stats").innerHTML = html;
-  $("total").textContent = "右边是成本率 / 10月上限。100 单的礼物总成本约 RM" + Math.round(tot).toLocaleString() + "（2盒 60 单、4盒 20 单、6盒 20 单）。";
+  $("total").textContent = "右边是成本率 / 10月上限。已算进 RM50 回扣。100 单的礼物总成本约 RM" + Math.round(tot).toLocaleString() + "（2盒 60 单、4盒 20 单、6盒 20 单，不含 RM50）。";
   $("smsg").textContent = "";
 }
 
@@ -260,12 +261,12 @@ $("toggle").onclick = async () => {
 };
 
 $("save").onclick = async () => {
-  const bad = [2, 4, 6].filter(n => Math.abs(PRIZES.reduce((a, p) => a + val(p.id, n), 0) - 100) >= 0.001);
+  const bad = [2, 4, 6].filter(n => Math.abs(ODDS_PRIZES.reduce((a, p) => a + val(p.id, n), 0) - 100) >= 0.001);
   const m = $("smsg");
-  if (PRIZES.some(p => [2, 4, 6].some(n => val(p.id, n) < 0))) { m.className = "msg warn"; m.textContent = "概率不能是负数"; return; }
+  if (ODDS_PRIZES.some(p => [2, 4, 6].some(n => val(p.id, n) < 0))) { m.className = "msg warn"; m.textContent = "概率不能是负数"; return; }
   if (bad.length) { m.className = "msg warn"; m.textContent = bad.map(n => n + "盒").join("、") + " 合计要等于 100%"; return; }
   const odds = {};
-  PRIZES.forEach(p => { odds[p.id] = {2:val(p.id, 2), 4:val(p.id, 4), 6:val(p.id, 6)}; });
+  ODDS_PRIZES.forEach(p => { odds[p.id] = {2:val(p.id, 2), 4:val(p.id, 4), 6:val(p.id, 6)}; });
   try {
     const r = await api({a:"setOdds", odds});
     m.className = r.ok ? "msg good" : "msg warn";

@@ -49,7 +49,9 @@ function pick(odds, n) {
   for (const id of live) { x -= odds[id][n]; if (x < 0) return id; }
   return live[live.length - 1];
 }
-const shown = (odds, n) => IDS.filter(id => odds[id][n] > 0);
+const FIRST = 'rm50';   // 每个人第 1 个红包固定,其余才按机率
+const shown = (odds, n) => [FIRST, ...IDS.filter(id => odds[id][n] > 0)];
+const drawAll = (odds, n) => [FIRST, ...Array.from({ length: n - 1 }, () => pick(odds, n))];
 
 // 这个配套抽不到、但大配套抽得到的奖品:一样显示出来,吸引升级(客服语音说明)
 function locks(odds, n) {
@@ -71,7 +73,7 @@ async function play(env, b) {
   let row = await find();
   if (!row) {
     if (!cfg.open) return json({ ok: false, error: 'closed' });
-    const seq = Array.from({ length: n }, () => pick(cfg.odds, n));
+    const seq = drawAll(cfg.odds, n);
     await env.DB.prepare('INSERT INTO d11_plays (phone,name,link,seq,at) VALUES (?,?,?,?,?) ON CONFLICT(phone) DO NOTHING')
       .bind(phone, name, n, JSON.stringify(seq), Date.now()).run();
     row = await find();
@@ -107,7 +109,7 @@ async function admin(env, b) {
   if (b.a === 'preview') {
     const n = KEYS[b.k];
     if (!n) return json({ ok: false, error: 'bad' });
-    const seq = Array.from({ length: n }, () => pick(cfg.odds, n));
+    const seq = drawAll(cfg.odds, n);
     return json({ ok: true, n, seq, show: shown(cfg.odds, n), lock: locks(cfg.odds, n) });
   }
   if (b.a === 'summary') {
