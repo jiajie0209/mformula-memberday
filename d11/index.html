@@ -66,11 +66,13 @@ h1{margin:10px 0 2px;text-align:center;font-size:42px;line-height:1.15;font-weig
 .res .b{margin:4px 0 2px;font-size:29px;line-height:1.2;font-weight:800;color:#fff}
 .ov.big .res .b{color:var(--gold)}
 .res .c{font-size:13px;color:#CFE0E5}
+.res .x{margin:0 0 4px;font-size:14px;font-weight:700;color:var(--gold2)}
 .btn{display:block;width:100%;margin-top:16px;padding:14px;border:0;border-radius:12px;background:var(--gold);color:#3A2404;font:inherit;font-size:18px;font-weight:800;cursor:pointer;text-align:center;text-decoration:none}
 .sum h2{margin:18px 0 12px;text-align:center;font-size:24px;font-weight:800;color:var(--gold)}
 .row{display:flex;align-items:center;margin-bottom:8px;padding:8px 12px;border-radius:12px;background:rgba(239,239,239,.94);color:var(--navy)}
 .row img{width:56px;height:56px;margin-right:12px;object-fit:contain}
 .row b{flex:1;font-size:16px}
+.row b small{display:block;margin-top:2px;font-size:12px;color:#A50D24}
 .row.top{background:var(--gold)}
 .note{margin:12px 0 0;text-align:center;font-size:14px;color:#CFE0E5}
 .rule{display:flex;flex-wrap:wrap;justify-content:center;margin:0 0 10px}
@@ -138,6 +140,7 @@ canvas{position:fixed;top:0;left:0;z-index:30;pointer-events:none}
   <div class="res" id="res">
     <p class="a" id="resA"></p>
     <p class="b" id="resB"></p>
+    <p class="x" id="resX"></p>
     <p class="c">惊喜礼会跟你的订单一起寄出</p>
     <button class="btn" id="next"></button>
   </div>
@@ -237,6 +240,7 @@ function openPacket(el) {
   $("bpImg").src = p.img;
   $("resA").textContent = p.top ? "大奖！恭喜你抽到" : "恭喜你抽到";
   $("resB").textContent = p.name;
+  $("resX").textContent = p.exp || "";
   $("next").textContent = left > 0 ? `再拆一个（还有 ${left} 次）` : "看我的礼物";
   ov.className = "ov on" + (p.top ? " big" : "");
   res.classList.remove("in");
@@ -261,7 +265,7 @@ let picture = null, message = "";
 function finish() {
   $("play").hidden = true; $("sum").hidden = false;
   const won = seq.map(byId);
-  $("list").innerHTML = won.map(p => `<div class="row${p.top ? " top" : ""}"><img src="${p.img}" alt=""><b>${p.name}</b></div>`).join("");
+  $("list").innerHTML = won.map(p => `<div class="row${p.top ? " top" : ""}"><img src="${p.img}" alt=""><b>${p.name}${p.exp ? `<small>${p.exp}</small>` : ""}</b></div>`).join("");
   message = "Hi Kent，我是 " + who + "，我拆完惊喜礼了：" + won.map(p => p.name).join("、");
   picture = drawPicture(won).catch(() => null);
 }
@@ -287,7 +291,8 @@ async function drawPicture(won) {
     x.fillRect(32, y, W - 64, h);
     const im = imgs[i], s = Math.min(92 / im.width, 92 / im.height);
     x.drawImage(im, 62 + (92 - im.width * s) / 2, y + 8 + (92 - im.height * s) / 2, im.width * s, im.height * s);
-    x.textAlign = "left"; x.fillStyle = "#062530"; x.font = font(32, 700); x.fillText(p.name, 176, y + 66);
+    x.textAlign = "left"; x.fillStyle = "#062530"; x.font = font(32, 700); x.fillText(p.name, 176, p.exp ? y + 52 : y + 66);
+    if (p.exp) { x.fillStyle = "#A50D24"; x.font = font(24, 700); x.fillText(p.exp, 176, y + 90); }
   });
   x.textAlign = "center"; x.fillStyle = "#F2C14E"; x.font = font(28, 700);
   x.fillText("2盒选 1 样 · 4盒选 3 样 · 6盒 6 样全部拿", W / 2, H - 84);

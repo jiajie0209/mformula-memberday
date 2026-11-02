@@ -3,7 +3,7 @@ const END_AT = Date.UTC(2026, 10, 11, 15, 59, 0);   // 11/11 23:59 马来西亚�
 
 // cost = 成本 RM;机率存在服务器,后台可改
 const PRIZES = [
-  {id:"rm50",     name:"RM50 现金回扣", short:"RM50 回扣", cost:0, fixed:true},
+  {id:"rm50",     name:"RM50 现金回扣", short:"RM50 回扣", cost:0, fixed:true, exp:"EXP: 2026.11.11"},
   {id:"sachet5",  name:"5包 MFormula",  short:"5包",     cost:4.5},
   {id:"sachet10", name:"10包 MFormula", short:"10包",    cost:9},
   {id:"wow2",     name:"WoW Care x2",   short:"WoW x2",  cost:4},
