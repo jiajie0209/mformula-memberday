@@ -23,6 +23,7 @@ h1{margin:10px 0 2px;text-align:center;font-size:42px;line-height:1.15;font-weig
 .ti span{display:block;margin-top:3px;font-size:11px;line-height:1.25;color:var(--navy);font-weight:600}
 .ti.top{background:var(--gold);outline:2px solid var(--gold2)}
 .ti.top em{position:absolute;top:-9px;left:50%;transform:translateX(-50%);white-space:nowrap;padding:1px 8px;border-radius:99px;background:var(--red);color:#fff;font-size:11px;font-style:normal;font-weight:700}
+.ti.up em{position:absolute;top:-9px;left:50%;transform:translateX(-50%);white-space:nowrap;padding:1px 7px;border-radius:99px;background:#C8102E;color:#fff;font-size:11px;font-style:normal;font-weight:700}
 .gate{margin-top:20px;padding:20px 16px;border:1px solid rgba(242,193,78,.5);border-radius:14px;background:rgba(2,14,20,.55)}
 .gate label{display:block;margin-bottom:10px;text-align:center;font-size:16px;font-weight:700}
 .gate input{display:block;width:100%;padding:13px;border:0;border-radius:10px;background:#fff;color:var(--navy);font:inherit;font-size:18px;text-align:center}
@@ -205,7 +206,13 @@ function paint(r) {
   const moved = r.n !== tier;
   look(r.n);
   seq = r.seq; cells = loadCells(); busy = false;
-  $("show").innerHTML = POOL.filter(p => r.show.includes(p.id)).map(p => `<div class="ti${p.top ? " top" : ""}">${p.top ? "<em>大奖</em>" : ""}<img src="${p.img}" alt=""><span>${p.short}</span></div>`).join("");
+  const lock = r.lock || {};
+  $("show").innerHTML = POOL.filter(p => r.show.includes(p.id) || lock[p.id]).map(p => {
+    const big = lock[p.id];   // a prize from a bigger package: same look, the tag says which package it belongs to
+    const cls = p.top ? " top" : big ? " up" : "";
+    const tag = big ? `<em>${big}盒${p.top ? "大奖" : "专属"}</em>` : p.top ? "<em>大奖</em>" : "";
+    return `<div class="ti${cls}">${tag}<img src="${p.img}" alt=""><span>${p.short}</span></div>`;
+  }).join("");
   const g = $("grid"); g.innerHTML = "";
   for (let i = 0; i < 11; i++) {
     const b = document.createElement("button");

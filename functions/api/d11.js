@@ -51,6 +51,17 @@ function pick(odds, n) {
 }
 const shown = (odds, n) => IDS.filter(id => odds[id][n] > 0);
 
+// 这个配套抽不到、但大配套抽得到的奖品:标成「X盒大奖」,吸引升级
+function locks(odds, n) {
+  const out = {};
+  for (const id of IDS) {
+    if (odds[id][n] > 0) continue;
+    const up = LINKS.find(l => l > n && odds[id][l] > 0);
+    if (up) out[id] = up;
+  }
+  return out;
+}
+
 // 一个号码一份奖品;再进来拿回同一份。PRIMARY KEY 保证并发也只有一行
 async function play(env, b) {
   const name = cleanName(b.name), phone = cleanPhone(b.phone), n = KEYS[b.k];
@@ -65,7 +76,7 @@ async function play(env, b) {
       .bind(phone, name, n, JSON.stringify(seq), Date.now()).run();
     row = await find();
   }
-  return json({ ok: true, n: row.link, seq: JSON.parse(row.seq), show: shown(cfg.odds, row.link) });
+  return json({ ok: true, n: row.link, seq: JSON.parse(row.seq), show: shown(cfg.odds, row.link), lock: locks(cfg.odds, row.link) });
 }
 
 function validOdds(odds) {
