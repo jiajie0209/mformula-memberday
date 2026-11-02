@@ -76,14 +76,10 @@ h1{margin:10px 0 2px;text-align:center;font-size:42px;line-height:1.15;font-weig
 @media(max-height:600px){.stage{transform:scale(.68);margin:-48px 0}}
 .pvbar{display:flex;justify-content:space-between;align-items:center;margin:-22px -16px 14px;padding:8px 14px;background:#6b3fa0;color:#fff;font-size:13px}
 .pvbar a{color:#fff;font-weight:700}
-.packs{display:flex;margin:0 -4px 12px}
-.pack{flex:1;margin:0 4px;padding:9px 4px;border:1.5px solid rgba(242,193,78,.6);border-radius:12px;background:rgba(2,14,20,.55);color:#fff;font:inherit;cursor:pointer}
-.pack b{display:block;font-size:18px}
-.pack span{display:block;margin-top:2px;font-size:12px;color:#CFE0E5}
-.pack.on{background:#F2C14E;border-color:#F2C14E;color:#3A2404}
-.pack.on span{color:#3A2404}
-.row .no{flex:0 0 24px;height:24px;margin-right:10px;border-radius:50%;background:#062530;color:#F6D98B;font-size:13px;font-weight:700;text-align:center;line-height:24px}
-.row.off{opacity:.42}
+.row.pick{width:100%;border:0;font:inherit;text-align:left;cursor:pointer}
+.row .no{flex:0 0 26px;height:26px;margin-right:10px;border-radius:50%;border:2px solid #7D93A0;background:#fff;color:#fff;font-size:15px;font-weight:800;text-align:center;line-height:22px}
+.row.on{outline:3px solid #F2C14E}
+.row.on .no{border-color:#1B7A4B;background:#1B7A4B}
 [hidden]{display:none!important}
 canvas{position:fixed;top:0;left:0;z-index:30;pointer-events:none}
 </style>
@@ -115,8 +111,7 @@ canvas{position:fixed;top:0;left:0;z-index:30;pointer-events:none}
 
   <section class="sum" id="sum" hidden>
     <h2>你的 6 份双11 礼物</h2>
-    <p class="note" style="margin:0 0 10px">选你要的配套，按顺序拿礼物</p>
-    <div class="packs" id="packs"></div>
+    <p class="note" style="margin:0 0 12px">点你要的礼物：2盒选 1 样，4盒选 3 样，6盒全部 6 样</p>
     <div id="list"></div>
     <p class="note">礼物会跟你的订单一起寄出</p>
     <button class="btn" id="send">截图发给 Ah Kent</button>
@@ -150,7 +145,7 @@ const POOL = PRIZES.map(p => ({...p, img:"img/" + p.id + ".webp", top:p.id === "
 const $ = id => document.getElementById(id);
 const preview = new URLSearchParams(location.search).get("preview") === "1";
 const TOTAL = 6;
-let left = 0, who = "", phone = "", seq = [], cells = {}, pkg = 0, busy = false;
+let left = 0, who = "", phone = "", seq = [], cells = {}, picks = [], busy = false;
 const byId = id => POOL.find(p => p.id === id);
 
 // progress on this phone only counts if it belongs to the prizes the server just returned
@@ -203,7 +198,7 @@ async function startGame() {
 }
 
 function paint(r) {
-  seq = r.seq; pkg = r.pkg || 0; cells = loadCells(); busy = false;
+  seq = r.seq; picks = r.picks || []; cells = loadCells(); busy = false;
   $("show").innerHTML = POOL.filter(p => r.show.includes(p.id)).map(p => `<div class="ti${p.top ? " top" : ""}">${p.top ? "<em>大奖</em>" : ""}<img src="${p.img}" alt=""><span>${p.short}</span></div>`).join("");
   const g = $("grid"); g.innerHTML = "";
   for (let i = 0; i < 11; i++) {
@@ -259,36 +254,36 @@ $("next").onclick = () => {
 let picture = null, message = "";
 
 function finish() {
-  $("packs").innerHTML = Object.keys(TAKE).map(n => `<button class="pack" data-pkg="${n}"><b>${n}盒</b><span>${TAKE[n] === TOTAL ? "全部 6 个" : "拿前 " + TAKE[n] + " 个"}</span></button>`).join("");
-  document.querySelectorAll(".pack").forEach(b => b.onclick = () => selectPack(+b.dataset.pkg));
   $("play").hidden = true; $("sum").hidden = false;
   paintList();
 }
 
 function paintList() {
-  const take = pkg ? TAKE[pkg] : TOTAL;
   $("list").innerHTML = seq.map((id, i) => {
-    const p = byId(id);
-    return `<div class="row${p.top ? " top" : ""}${i < take ? "" : " off"}"><span class="no">${i + 1}</span><img src="${p.img}" alt=""><b>${p.name}</b></div>`;
+    const p = byId(id), on = picks.includes(i);
+    return `<button class="row pick${p.top ? " top" : ""}${on ? " on" : ""}" data-i="${i}"><span class="no">${on ? "✓" : ""}</span><img src="${p.img}" alt=""><b>${p.name}</b></button>`;
   }).join("");
-  document.querySelectorAll(".pack").forEach(b => b.classList.toggle("on", +b.dataset.pkg === pkg));
-  $("send").textContent = pkg ? "截图发给 Ah Kent" : "先选配套";
+  document.querySelectorAll(".row.pick").forEach(b => b.onclick = () => togglePick(+b.dataset.i));
+  const pkg = PACK_OF[picks.length];
+  $("send").textContent = pkg ? `截图发给 Ah Kent（${pkg}盒）` : "选好礼物才能发";
   if (pkg) {
-    const won = seq.slice(0, take).map(byId);
+    const won = picks.map(i => byId(seq[i]));
     message = "Hi Kent，我是 " + who + "，我要 " + pkg + "盒，我的礼物：" + won.map(p => p.name).join("、");
-    picture = drawPicture(won).catch(() => null);
+    picture = drawPicture(won, pkg).catch(() => null);
   }
 }
 
-function selectPack(n) {
-  pkg = n; $("sendNote").textContent = ""; paintList();
-  if (!preview) api({a:"choose", phone, pkg:n}).catch(() => {});
+function togglePick(i) {
+  picks = picks.includes(i) ? picks.filter(x => x !== i) : [...picks, i].sort((a, b) => a - b);
+  $("sendNote").textContent = "";
+  paintList();
+  if (!preview && PACK_OF[picks.length]) api({a:"choose", phone, picks}).catch(() => {});
 }
 
 const loadImg = src => new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = src; });
 
 // the "screenshot": name, last 4 digits, package and prizes as one picture
-async function drawPicture(won) {
+async function drawPicture(won, pkg) {
   const W = 720, rowH = 124, H = 330 + won.length * rowH;
   const c = document.createElement("canvas"); c.width = W; c.height = H;
   const x = c.getContext("2d");
@@ -314,7 +309,7 @@ async function drawPicture(won) {
 }
 
 async function sendResult() {
-  if (!pkg) { $("sendNote").textContent = "先选你要的配套"; return; }
+  if (!PACK_OF[picks.length]) { $("sendNote").textContent = "2盒选 1 样，4盒选 3 样，6盒全部 6 样"; return; }
   if (preview) { $("sendNote").textContent = "预览模式，不会发出去"; return; }
   const chat = "https://wa.me/601135155309?text=" + encodeURIComponent(message);
   const blob = await picture;

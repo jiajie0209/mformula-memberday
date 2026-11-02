@@ -1,9 +1,9 @@
 // POST /api/d11 — 双11 拆红包:客人 play / choose 公开;其余要管理员 cookie(同一套后台登入)
-// 每个人拆 6 个红包,选配套后按顺序拿:2盒 1 个、4盒 3 个、6盒 6 个
+// 每个人拆 6 个红包,再自己选要哪几样:2盒 1 样、4盒 3 样、6盒 6 样
 // 独立资料表 d11_draws,不碰大转盘的 members / config
 import { adminCookieOK, json, kvGet, kvSet } from './_lib.js';
 
-const TAKE = { 2: 1, 4: 3, 6: 6 };
+const PACK_OF = { 1: 2, 3: 4, 6: 6 };   // 选几样 → 哪个配套
 const ZONES = ['a', 'b'];   // a = 第 2–3 个红包,b = 第 4–6 个红包
 // 目标成本率(含抽奖、已扣 RM50):2盒 35.7% 以内,4盒 39–39.9%,6盒 41–42.8%
 const DEFAULT_ODDS = {
@@ -26,6 +26,7 @@ async function ensure(env) {
   await env.DB.batch([
     env.DB.prepare('CREATE TABLE IF NOT EXISTS kv (k TEXT PRIMARY KEY, v TEXT NOT NULL)'),
     env.DB.prepare('CREATE TABLE IF NOT EXISTS d11_draws (phone TEXT PRIMARY KEY, name TEXT NOT NULL, pkg INTEGER NOT NULL DEFAULT 0, seq TEXT NOT NULL, at INTEGER NOT NULL)'),
+    env.DB.prepare('CREATE TABLE IF NOT EXISTS d11_picks (phone TEXT PRIMARY KEY, picks TEXT NOT NULL)'),
   ]);
 }
 
@@ -62,7 +63,7 @@ async function play(env, b) {
   const name = cleanName(b.name), phone = cleanPhone(b.phone);
   if (!name || !phone) return json({ ok: false, error: 'bad' });
   const cfg = await loadCfg(env);
-  const find = () => env.DB.prepare('SELECT pkg, seq FROM d11_draws WHERE phone=?').bind(phone).first();
+  const find = () => env.DB.prepare('SELECT d.pkg, d.seq, p.picks FROM d11_draws d LEFT JOIN d11_picks p ON p.phone=d.phone WHERE d.phone=?').bind(phone).first();
   let row = await find();
   if (!row) {
     if (!cfg.open) return json({ ok: false, error: 'closed' });
@@ -70,14 +71,17 @@ async function play(env, b) {
       .bind(phone, name, JSON.stringify(drawAll(cfg.odds)), Date.now()).run();
     row = await find();
   }
-  return json({ ok: true, pkg: row.pkg, seq: JSON.parse(row.seq), show: shown(cfg.odds) });
+  return json({ ok: true, pkg: row.pkg, seq: JSON.parse(row.seq), picks: row.picks ? JSON.parse(row.picks) : [], show: shown(cfg.odds) });
 }
 
 async function choose(env, b) {
-  const phone = cleanPhone(b.phone), pkg = Number(b.pkg);
-  if (!phone || !TAKE[pkg]) return json({ ok: false, error: 'bad' });
+  const phone = cleanPhone(b.phone), picks = Array.isArray(b.picks) ? b.picks : [];
+  const pkg = PACK_OF[picks.length];
+  if (!phone || !pkg || new Set(picks).size !== picks.length || !picks.every(i => Number.isInteger(i) && i >= 0 && i < 6)) return json({ ok: false, error: 'bad' });
   const r = await env.DB.prepare('UPDATE d11_draws SET pkg=? WHERE phone=?').bind(pkg, phone).run();
-  return json({ ok: !!(r.meta && r.meta.changes) });
+  if (!(r.meta && r.meta.changes)) return json({ ok: false });
+  await env.DB.prepare('INSERT INTO d11_picks (phone,picks) VALUES (?,?) ON CONFLICT(phone) DO UPDATE SET picks=excluded.picks').bind(phone, JSON.stringify(picks.slice().sort())).run();
+  return json({ ok: true, pkg });
 }
 
 function validOdds(odds) {
@@ -102,10 +106,10 @@ function validOdds(odds) {
 async function admin(env, b) {
   const cfg = await loadCfg(env);
   if (b.a === 'get') {
-    const r = await env.DB.prepare('SELECT phone,name,pkg,seq,at FROM d11_draws ORDER BY at DESC').all();
-    return json({ ok: true, open: cfg.open, odds: cfg.odds, rows: (r.results || []).map(x => ({ ...x, seq: JSON.parse(x.seq) })) });
+    const r = await env.DB.prepare('SELECT d.phone,d.name,d.pkg,d.seq,d.at,p.picks FROM d11_draws d LEFT JOIN d11_picks p ON p.phone=d.phone ORDER BY d.at DESC').all();
+    return json({ ok: true, open: cfg.open, odds: cfg.odds, rows: (r.results || []).map(x => ({ ...x, seq: JSON.parse(x.seq), picks: x.picks ? JSON.parse(x.picks) : [] })) });
   }
-  if (b.a === 'preview') return json({ ok: true, pkg: 0, seq: drawAll(cfg.odds), show: shown(cfg.odds) });
+  if (b.a === 'preview') return json({ ok: true, pkg: 0, seq: drawAll(cfg.odds), picks: [], show: shown(cfg.odds) });
   if (b.a === 'summary') {
     const r = await env.DB.prepare('SELECT COUNT(*) AS players, COALESCE(SUM(pkg>0),0) AS chosen FROM d11_draws').first();
     return json({ ok: true, open: cfg.open, players: r.players, chosen: r.chosen });
@@ -123,7 +127,10 @@ async function admin(env, b) {
   if (b.a === 'reset') {
     const phone = cleanPhone(b.phone);
     if (!phone) return json({ ok: false, error: 'bad' });
-    await env.DB.prepare('DELETE FROM d11_draws WHERE phone=?').bind(phone).run();
+    await env.DB.batch([
+      env.DB.prepare('DELETE FROM d11_draws WHERE phone=?').bind(phone),
+      env.DB.prepare('DELETE FROM d11_picks WHERE phone=?').bind(phone),
+    ]);
     return json({ ok: true });
   }
   return json({ ok: false, error: 'bad' });

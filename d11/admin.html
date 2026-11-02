@@ -57,10 +57,10 @@ td input{width:100%;min-width:48px;height:34px;border:1.5px solid var(--line);bo
       <div class="cd-sec">📊 数据</div>
       <div class="adm-stats">
         <div class="adm-stat"><div class="n" id="nPlayers">0</div><div class="l">参与人数</div></div>
-        <div class="adm-stat"><div class="n" id="nChosen">0</div><div class="l">已选配套</div></div>
+        <div class="adm-stat"><div class="n" id="nChosen">0</div><div class="l">已选礼物</div></div>
         <div class="adm-stat"><div class="n" id="nCost">RM0</div><div class="l">礼物成本</div></div>
       </div>
-      <div class="adm-card"><div class="adm-h">🎁 各奖送出（已选配套的人）</div><div id="given"></div></div>
+      <div class="adm-card"><div class="adm-h">🎁 各奖送出（顾客选的）</div><div id="given"></div></div>
       <div class="adm-card"><div class="adm-h">🏆 中奖最多（按礼物成本）</div><div id="top"></div></div>
       <div class="adm-card">
         <div class="adm-h">🔎 查顾客（输电话查）</div>
@@ -87,7 +87,7 @@ td input{width:100%;min-width:48px;height:34px;border:1.5px solid var(--line);bo
         <div class="adm-note" id="total"></div>
         <p class="msg" id="smsg"></p>
         <button id="save" class="lead-btn" style="margin-top:6px">💾 保存概率</button>
-        <div class="adm-note">每个顾客拆 6 个：<b>第 1 个固定 RM50 回扣</b>。选配套后按顺序拿：2盒第 1 个、4盒第 1–3 个、6盒全部。每一栏要合计 100%，<b>0% = 抽不到，也不会显示</b>。</div>
+        <div class="adm-note">每个顾客拆 6 个：<b>第 1 个固定 RM50 回扣</b>，再自己选：2盒 1 样、4盒 3 样、6盒全部。成本率按顾客挑最贵的算。每一栏要合计 100%，<b>0% = 抽不到，也不会显示</b>。</div>
       </div>
 
       <div class="cd-sec">🎛 控制</div>
@@ -105,7 +105,7 @@ const $ = id => document.getElementById(id);
 const OFF = 50;   // first packet: RM50 back
 const LINKS = {2:{price:358, base:104, limit:35.7, orders:60}, 4:{price:716, base:256, limit:39.9, orders:20}, 6:{price:1199, base:441, limit:42.8, orders:20}};
 const ZONES = ["a", "b"];
-const taken = r => r.pkg ? r.seq.slice(0, TAKE[r.pkg]) : [];
+const taken = r => r.picks.map(i => r.seq[i]);
 const byId = id => PRIZES.find(p => p.id === id);
 const nameOf = id => (byId(id) || {short:id}).short;
 const costOf = r => taken(r).reduce((a, id) => a + ((byId(id) || {}).cost || 0), 0);
@@ -160,6 +160,22 @@ function paintOdds(odds) {
   calc();
 }
 
+// customers choose for themselves, so 4盒 is costed as the two dearest of the five random prizes
+function bestTwo() {
+  let seed = 12345, total = 0;
+  const rnd = () => (seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296;
+  const sum = z => ODDS_PRIZES.reduce((a, p) => a + val(p.id, z), 0);
+  const sa = sum("a"), sb = sum("b");
+  if (!sa || !sb) return 0;
+  const one = (z, s) => { let x = rnd() * s; for (const p of ODDS_PRIZES) { x -= val(p.id, z); if (x < 0) return p.cost; } return 0; };
+  const N = 3000;
+  for (let i = 0; i < N; i++) {
+    const d = [one("a", sa), one("a", sa), one("b", sb), one("b", sb), one("b", sb)].sort((p, q) => q - p);
+    total += d[0] + d[1];
+  }
+  return total / N;
+}
+
 function calc() {
   let tot = 0, html = "";
   const avg = {};
@@ -169,7 +185,7 @@ function calc() {
     const c = $("s" + z), ok = Math.abs(sum - 100) < 0.001;
     c.textContent = Math.round(sum * 10) / 10 + "%"; c.className = ok ? "good" : "warn";
   });
-  const GIFT = {2:0, 4:2 * avg.a, 6:2 * avg.a + 3 * avg.b};
+  const GIFT = {2:0, 4:bestTwo(), 6:2 * avg.a + 3 * avg.b};   // 2盒 picks RM50, 4盒 picks RM50 + the two dearest
   [2, 4, 6].forEach(n => {
     const L = LINKS[n], gift = GIFT[n], net = L.price - OFF, ratio = (L.base + gift) / net * 100;
     tot += gift * L.orders;
