@@ -104,6 +104,12 @@ async function admin(env, b) {
     const r = await env.DB.prepare('SELECT phone,name,link,seq,at FROM d11_plays ORDER BY at DESC').all();
     return json({ ok: true, open: cfg.open, odds: cfg.odds, rows: (r.results || []).map(x => ({ ...x, seq: JSON.parse(x.seq) })) });
   }
+  if (b.a === 'preview') {
+    const n = KEYS[b.k];
+    if (!n) return json({ ok: false, error: 'bad' });
+    const seq = Array.from({ length: n }, () => pick(cfg.odds, n));
+    return json({ ok: true, n, seq, show: shown(cfg.odds, n), lock: locks(cfg.odds, n) });
+  }
   if (b.a === 'summary') {
     const r = await env.DB.prepare('SELECT COUNT(*) AS players, COALESCE(SUM(link),0) AS opens FROM d11_plays').first();
     return json({ ok: true, open: cfg.open, players: r.players, opens: r.opens });

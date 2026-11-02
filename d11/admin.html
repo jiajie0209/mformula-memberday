@@ -5,100 +5,140 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex">
 <title>拆红包后台</title>
+<link rel="stylesheet" href="/styles.css">
 <style>
-:root{--navy:#062530;--light:#EFEFEF;--line:#D9DEE0;--ok:#1B7A4B;--bad:#B3261E}
-*{box-sizing:border-box}
-body{margin:0;background:#F4F6F7;color:var(--navy);font-family:"PingFang SC","Noto Sans SC","Microsoft YaHei",system-ui,sans-serif}
-header{display:flex;justify-content:space-between;align-items:center;padding:16px;background:var(--navy);color:var(--light)}
-header h1{margin:0;font-size:20px}
-main{max-width:760px;margin:0 auto;padding:16px}
-.card{margin-bottom:16px;padding:16px;border:1px solid var(--line);border-radius:12px;background:#fff}
-.card h2{margin:0 0 12px;font-size:17px}
-label{display:block;margin:10px 0 4px;font-size:14px}
-input{width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;font:inherit;background:#fff;color:var(--navy)}
-button{padding:12px 18px;border:0;border-radius:8px;background:var(--navy);color:#fff;font:inherit;font-weight:700;cursor:pointer}
-button.ghost{background:transparent;border:1px solid var(--light);color:var(--light);padding:6px 12px;font-weight:400}
-button.small{padding:5px 9px;font-size:12px;font-weight:400;background:#fff;color:var(--bad);border:1px solid var(--bad)}
-button.open{background:var(--ok)}button.shut{background:var(--bad)}
+html,body{height:auto}
+#page{padding:16px 14px 28px}
+.back{text-decoration:none;white-space:nowrap}
+.cd-badge.on{color:#217a44;background:rgba(46,158,91,.14)}
+.pv3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.pv3 .pv-btn{height:46px;font-size:14px;display:flex;align-items:center;justify-content:center;text-decoration:none}
+.lk{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
+.lk:last-child{border-bottom:none}
+.lk div{flex:1;min-width:0}
+.lk b{display:block;font-size:13.5px;color:var(--navy)}
+.lk span{display:block;margin-top:2px;font-size:11.5px;color:var(--muted);word-break:break-all}
+.lk button,.mini{flex:0 0 auto;height:34px;padding:0 12px;border:none;border-radius:9px;background:var(--navy);color:#fff;font:inherit;font-size:12.5px;font-weight:800;cursor:pointer}
+.lk button.done{background:#2e9e5b}
+.mini.red{background:#fff;color:var(--danger);border:1.5px solid var(--danger)}
 .wrap{overflow-x:auto}
-table{width:100%;border-collapse:collapse;font-size:14px}
-th,td{padding:8px 3px;border-bottom:1px solid var(--line);text-align:left}
-th{font-weight:600;color:#4B626A}
-td input{min-width:50px;padding:7px 2px;text-align:center}
-.sum td{font-weight:700;border-bottom:0}
-.good{color:var(--ok)}.warn{color:var(--bad)}
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:14px}
-.stat{padding:12px;border-radius:10px;background:#F4F6F7;font-size:14px}
-.stat b{display:block;margin-bottom:6px;font-size:15px}
-.stat div{display:flex;justify-content:space-between;gap:8px;margin-top:3px}
-.msg{min-height:20px;margin:10px 0 0;font-size:14px}
-.note{margin:8px 0 0;font-size:13px;color:#4B626A}
-.links{word-break:break-all;font-size:13px;line-height:1.7}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:7px 3px;border-bottom:1px solid var(--line);text-align:left}
+th{font-weight:700;color:var(--muted);font-size:12px}
+td input{width:100%;min-width:48px;height:34px;border:1.5px solid var(--line);border-radius:8px;text-align:center;font:inherit;background:#fff;color:var(--ink)}
+.sum td{font-weight:800;border-bottom:0}
+.good{color:#217a44}.warn{color:var(--danger)}
+.msg{min-height:18px;margin-top:8px;font-size:13px;font-weight:700}
+.row2{display:flex;gap:8px;margin-bottom:10px}
+.row2 .lead-btn{flex:1}
 [hidden]{display:none!important}
 </style>
 </head>
 <body>
-<header>
-  <h1>拆红包后台</h1>
-  <button class="ghost" id="out" hidden>登出</button>
-</header>
-<main>
-  <section class="card" id="login" style="max-width:380px;margin:40px auto">
-    <h2>登录</h2>
-    <form id="lf">
-      <label for="pass">后台密码</label>
-      <input id="pass" type="password" autocomplete="current-password">
-      <p class="msg warn" id="lerr"></p>
-      <button style="width:100%">登录</button>
-    </form>
-  </section>
+<div id="phone" class="bare">
+  <main id="main"><section id="page">
+    <div class="screen-head"><a class="back" href="/">‹ 活动列表</a><h2>双11 · 十一月拆红包</h2></div>
 
-  <div id="panel" hidden>
-    <section class="card">
-      <h2>活动状态：<span id="state"></span></h2>
-      <button id="toggle"></button>
-      <p class="note">关闭时，新客人进不来；已经抽过的客人还是可以看回自己的奖品。</p>
-      <div class="links" id="links" style="margin-top:12px"></div>
-    </section>
-    <section class="card">
-      <h2>调整机率（%）</h2>
-      <div class="wrap"><table><thead><tr><th>奖品</th><th>成本</th><th>2盒</th><th>4盒</th><th>6盒</th></tr></thead><tbody id="rows"></tbody></table></div>
-      <div class="stats" id="stats"></div>
-      <p class="note" id="total"></p>
-      <p class="msg" id="smsg"></p>
-      <button id="save">保存机率</button>
-    </section>
-    <section class="card">
-      <h2>客人抽奖记录 <span id="count" style="font-weight:400;font-size:14px"></span></h2>
-      <button id="reload" style="margin-bottom:12px;padding:8px 14px">刷新记录</button>
-      <p class="msg warn" id="lmsg"></p>
-      <div class="stats" id="given" style="margin:0 0 12px"></div>
-      <div class="wrap"><table><thead><tr><th>时间</th><th>名字</th><th>电话</th><th>配套</th><th>抽中</th><th></th></tr></thead><tbody id="log"></tbody></table></div>
-      <p class="note">重置：删除这个号码的记录，客人可以重新抽。用在给错链接，或第二张单。</p>
-    </section>
-  </div>
-</main>
+    <div class="adm-card" id="login">
+      <div class="adm-h">🔐 后台登录</div>
+      <form id="lf" class="code-add"><input id="pass" type="password" autocomplete="current-password" placeholder="后台密码" style="flex:1"><button>登录</button></form>
+      <p class="msg warn" id="lerr"></p>
+    </div>
+
+    <div id="panel" hidden>
+      <div class="cd-hero"><span class="cd-badge" id="state"></span><span class="cd-meta">D11 · 🧧 拆红包 · 2026-11-02 ~ 2026-11-11</span></div>
+
+      <div class="cd-sec">🎮 游戏预览</div>
+      <div class="adm-card">
+        <div class="pv3">
+          <a class="pv-btn" href="./?k=x7k2&preview=1">👁 2盒</a>
+          <a class="pv-btn" href="./?k=q4m9&preview=1">👁 4盒</a>
+          <a class="pv-btn" href="./?k=z8p3&preview=1">👁 6盒</a>
+        </div>
+        <div class="adm-note">进去看到<b>完整的拆红包游戏</b> —— 能拆、能看礼物，和顾客玩的一模一样（预览，不影响真实数据）。</div>
+      </div>
+
+      <div class="cd-sec">📊 数据</div>
+      <div class="adm-stats">
+        <div class="adm-stat"><div class="n" id="nPlayers">0</div><div class="l">参与人数</div></div>
+        <div class="adm-stat"><div class="n" id="nOpens">0</div><div class="l">总抽奖</div></div>
+        <div class="adm-stat"><div class="n" id="nCost">RM0</div><div class="l">礼物成本</div></div>
+      </div>
+      <div class="adm-card"><div class="adm-h">🎁 各奖中出（多少人抽到）</div><div id="given"></div></div>
+      <div class="adm-card"><div class="adm-h">🏆 中奖最多（按礼物成本）</div><div id="top"></div></div>
+      <div class="adm-card">
+        <div class="adm-h">🔎 查顾客（输电话查）</div>
+        <div class="code-add"><input id="findPhone" placeholder="顾客电话 如 0123456789" inputmode="tel" style="flex:1"><button id="findBtn">查</button></div>
+        <div id="findResult"></div>
+        <div class="adm-note">给错链接或第二张单：查到顾客后按「重置」，顾客就能重新抽。</div>
+      </div>
+      <div class="adm-card">
+        <div class="adm-h">📋 全部记录 <span id="count" style="font-weight:400;font-size:12px"></span></div>
+        <div class="row2"><button id="reload" class="lead-btn">🔄 刷新</button><button id="csv" class="lead-btn">⬇️ 导出 CSV</button></div>
+        <p class="msg warn" id="lmsg"></p>
+        <div class="wrap"><table><thead><tr><th>时间</th><th>名字</th><th>电话</th><th>配套</th><th>抽中</th></tr></thead><tbody id="log"></tbody></table></div>
+      </div>
+
+      <div class="cd-sec">📋 内容（设置）</div>
+      <div class="adm-card">
+        <div class="adm-h">🔗 发给顾客的链接</div>
+        <div id="links"></div>
+      </div>
+      <div class="adm-card">
+        <div class="adm-h">🎲 中奖概率（%）</div>
+        <div class="wrap"><table><thead><tr><th>奖品</th><th>成本</th><th>2盒</th><th>4盒</th><th>6盒</th></tr></thead><tbody id="rows"></tbody></table></div>
+        <div id="stats" style="margin-top:8px"></div>
+        <div class="adm-note" id="total"></div>
+        <p class="msg" id="smsg"></p>
+        <button id="save" class="lead-btn" style="margin-top:6px">💾 保存概率</button>
+        <div class="adm-note">每个配套要合计 100%。<b>0% = 抽不到</b>，但如果更大的配套抽得到，还是会显示在奖品列表。</div>
+      </div>
+
+      <div class="cd-sec">🎛 控制</div>
+      <div class="adm-card">
+        <button id="toggle"></button>
+        <div class="adm-note">暂停 = 新顾客不能玩；已经抽过的顾客还是看得回自己的奖品。</div>
+      </div>
+      <button class="ghost" id="out">退出登录</button>
+    </div>
+  </section></main>
+</div>
 <script src="shared.js"></script>
 <script>
 const $ = id => document.getElementById(id);
 const LINKS = {2:{price:308, base:104, limit:32, orders:60}, 4:{price:666, base:256, limit:35, orders:20}, 6:{price:1149, base:479, limit:43.2, orders:20}};
-const nameOf = id => (PRIZES.find(p => p.id === id) || {short:id}).short;
-let inputs = {}, open = false;
+const byId = id => PRIZES.find(p => p.id === id);
+const nameOf = id => (byId(id) || {short:id}).short;
+const costOf = r => r.seq.reduce((a, id) => a + ((byId(id) || {}).cost || 0), 0);
+let inputs = {}, open = false, allRows = [];
 
 function esc(s) { const d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
 function val(id, n) { return parseFloat(inputs[id][n].value) || 0; }
 function when(t) { return new Date(t).toLocaleString("en-GB", {timeZone:"Asia/Kuala_Lumpur", day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit"}); }
 
 function paintState() {
-  $("state").textContent = open ? "开放中" : "关闭";
-  $("state").className = open ? "good" : "warn";
-  $("toggle").textContent = open ? "关闭活动" : "开放活动";
-  $("toggle").className = open ? "shut" : "open";
+  $("state").textContent = open ? "🟢 进行中" : "⏸ 未开放";
+  $("state").className = "cd-badge" + (open ? " on" : "");
+  $("toggle").textContent = open ? "⏸ 暂停活动" : "▶️ 开放活动";
+  $("toggle").className = open ? "pause-btn" : "launch-btn";
 }
 
 function paintLinks() {
-  const base = location.origin + location.pathname.replace(/admin(\.html)?$/, "");
-  $("links").innerHTML = Object.entries(KEYS).map(([k, n]) => `${n}盒链接：${esc(base + "?k=" + k)}`).join("<br>");
+  const base = location.origin + "/d11/";
+  $("links").innerHTML = Object.entries(KEYS).map(([k, n]) => `<div class="lk"><div><b>${n}盒链接</b><span>${esc(base + "?k=" + k)}</span></div><button data-copy="${esc(base + "?k=" + k)}">复制</button></div>`).join("");
+  document.querySelectorAll("[data-copy]").forEach(b => b.onclick = () => copy(b));
+}
+
+async function copy(b) {
+  const text = b.dataset.copy;
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch (e) {
+    const t = document.createElement("textarea");
+    t.value = text; document.body.appendChild(t); t.select(); document.execCommand("copy"); t.remove();
+  }
+  b.textContent = "已复制 ✓"; b.classList.add("done");
+  setTimeout(() => { b.textContent = "复制"; b.classList.remove("done"); }, 1500);
 }
 
 function paintOdds(odds) {
@@ -130,21 +170,33 @@ function calc() {
     c.textContent = Math.round(sum * 10) / 10 + "%"; c.className = ok ? "good" : "warn";
     const L = LINKS[n], gift = avg * n, ratio = (L.base + gift) / L.price * 100;
     tot += gift * L.orders;
-    html += `<div class="stat"><b>${n}盒（拆 ${n} 次）</b><div><span>每单礼物</span><span>RM${gift.toFixed(2)}</span></div><div><span>成本率</span><span class="${ratio > L.limit ? "warn" : "good"}">${ratio.toFixed(1)}%</span></div><div><span>10月上限</span><span>${L.limit}%</span></div><div><span>每单还赚</span><span>RM${Math.round(L.price - L.base - gift)}</span></div></div>`;
+    html += `<div class="pz-row"><span>${n}盒 · 礼物 RM${gift.toFixed(2)} · 还赚 RM${Math.round(L.price - L.base - gift)}</span><b class="${ratio > L.limit ? "warn" : "good"}">${ratio.toFixed(1)}% / ${L.limit}%</b></div>`;
   });
   $("stats").innerHTML = html;
-  $("total").textContent = "100 单的礼物总成本：约 RM" + Math.round(tot).toLocaleString() + "（2盒 60 单、4盒 20 单、6盒 20 单）";
+  $("total").textContent = "右边是成本率 / 10月上限。100 单的礼物总成本约 RM" + Math.round(tot).toLocaleString() + "（2盒 60 单、4盒 20 单、6盒 20 单）。";
   $("smsg").textContent = "";
 }
 
-function paintLog(rows) {
+function paintData(rows) {
+  allRows = rows;
   $("count").textContent = "（" + rows.length + " 位）";
-  const c = {};
-  rows.forEach(r => r.seq.forEach(id => c[id] = (c[id] || 0) + 1));
-  const cost = PRIZES.reduce((a, p) => a + (c[p.id] || 0) * p.cost, 0);
-  $("given").innerHTML = `<div class="stat"><b>已抽出</b>${PRIZES.filter(p => c[p.id]).map(p => `<div><span>${p.short}</span><span>${c[p.id]} 份</span></div>`).join("") || "<div>还没有</div>"}<div><span>礼物成本</span><span>RM${Math.round(cost).toLocaleString()}</span></div></div>`;
-  $("log").innerHTML = rows.map(r => `<tr><td>${esc(when(r.at))}</td><td>${esc(r.name)}</td><td>${esc(r.phone)}</td><td>${esc(r.link)}盒</td><td>${esc(r.seq.map(nameOf).join("、"))}</td><td><button class="small" data-reset="${esc(r.phone)}">重置</button></td></tr>`).join("");
-  document.querySelectorAll("[data-reset]").forEach(b => b.onclick = () => reset(b.dataset.reset));
+  $("nPlayers").textContent = rows.length;
+  $("nOpens").textContent = rows.reduce((a, r) => a + r.seq.length, 0);
+  $("nCost").textContent = "RM" + Math.round(rows.reduce((a, r) => a + costOf(r), 0)).toLocaleString();
+  const people = PRIZES.map(p => [p, rows.filter(r => r.seq.includes(p.id)).length]).filter(x => x[1]).sort((a, b) => b[1] - a[1]);
+  $("given").innerHTML = people.map(([p, n]) => `<div class="pz-row"><span>${p.short}</span><b>${n} 人</b></div>`).join("") || '<div class="adm-empty">还没有</div>';
+  const best = rows.slice().sort((a, b) => costOf(b) - costOf(a)).slice(0, 5);
+  $("top").innerHTML = best.map((r, i) => `<div class="adm-lb"><span class="r ${i < 3 ? "top" : ""}">${i + 1}</span><span class="nm">${esc(r.name)}</span><span class="v">RM${costOf(r).toFixed(0)}</span></div>`).join("") || '<div class="adm-empty">还没有</div>';
+  $("log").innerHTML = rows.map(r => `<tr><td>${esc(when(r.at))}</td><td>${esc(r.name)}</td><td>${esc(r.phone)}</td><td>${esc(r.link)}盒</td><td>${esc(r.seq.map(nameOf).join("、"))}</td></tr>`).join("");
+}
+
+function find() {
+  const box = $("findResult"), d = cleanPhone($("findPhone").value);
+  if (!d) { box.innerHTML = '<div class="cs-bad">电话号码不对</div>'; return; }
+  const r = allRows.find(x => x.phone === d);
+  if (!r) { box.innerHTML = '<div class="cs-bad">这个号码还没有抽过</div>'; return; }
+  box.innerHTML = `<div class="cs-card"><div class="cs-row"><b>${esc(r.name)}</b> · ${esc(r.phone)}</div><div class="cs-row">${esc(r.link)}盒 · ${esc(when(r.at))}</div><div class="cs-row">抽中：${esc(r.seq.map(nameOf).join("、"))}</div><button class="mini red" id="resetBtn" style="margin-top:8px">重置</button></div>`;
+  $("resetBtn").onclick = () => reset(r.phone);
 }
 
 async function fetchAll() {
@@ -156,8 +208,8 @@ async function fetchAll() {
 async function loadAll() {
   const r = await fetchAll();
   if (!r.ok) return false;
-  $("login").hidden = true; $("panel").hidden = false; $("out").hidden = false;
-  paintOdds(r.odds); paintLog(r.rows);
+  $("login").hidden = true; $("panel").hidden = false;
+  paintOdds(r.odds); paintData(r.rows);
   return true;
 }
 
@@ -165,16 +217,26 @@ async function loadLog() {
   $("lmsg").textContent = "";
   try {
     const r = await fetchAll();
-    if (r.ok) paintLog(r.rows); else $("lmsg").textContent = "拿不到资料，再试一次";
+    if (r.ok) paintData(r.rows); else $("lmsg").textContent = "拿不到资料，再试一次";
   } catch (err) { $("lmsg").textContent = "网络不稳，再试一次"; }
 }
 
 async function reset(ph) {
-  if (!confirm("重置 " + ph + "？这个号码的奖品记录会删除，客人可以重新抽。")) return;
+  if (!confirm("重置 " + ph + "？这个号码的奖品记录会删除，顾客可以重新抽。")) return;
   try {
     const r = await api({a:"reset", phone:ph});
-    if (r.ok) loadLog(); else $("lmsg").textContent = "重置不到，再试一次";
+    if (r.ok) { $("findResult").innerHTML = '<div class="cs-card cs-ok">已重置，顾客可以重新抽</div>'; loadLog(); }
+    else $("lmsg").textContent = "重置不到，再试一次";
   } catch (err) { $("lmsg").textContent = "网络不稳，再试一次"; }
+}
+
+function exportCsv() {
+  const cell = v => '"' + String(v).replace(/"/g, '""') + '"';
+  const lines = [["时间", "名字", "电话", "配套", "抽中"].join(",")].concat(allRows.map(r => [when(r.at), r.name, "'" + r.phone, r.link + "盒", r.seq.map(nameOf).join("、")].map(cell).join(",")));
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob(["﻿" + lines.join("\n")], {type:"text/csv"}));
+  a.download = "双11拆红包记录.csv";
+  document.body.appendChild(a); a.click(); a.remove();
 }
 
 $("lf").onsubmit = async e => {
@@ -190,33 +252,35 @@ $("lf").onsubmit = async e => {
 
 $("toggle").onclick = async () => {
   const next = !open;
-  if (!confirm(next ? "开放活动？客人马上可以开始抽奖。" : "关闭活动？新客人会进不来。")) return;
+  if (!confirm(next ? "开放活动？顾客马上可以开始抽奖。" : "暂停活动？新顾客会进不来。")) return;
   try {
     const r = await api({a:"setOpen", open:next});
-    if (r.ok) { open = r.open; paintState(); } else $("lmsg").textContent = "改不到，再试一次";
-  } catch (err) { $("lmsg").textContent = "网络不稳，再试一次"; }
+    if (r.ok) { open = r.open; paintState(); } else alert("改不到，再试一次");
+  } catch (err) { alert("网络不稳，再试一次"); }
 };
 
 $("save").onclick = async () => {
   const bad = [2, 4, 6].filter(n => Math.abs(PRIZES.reduce((a, p) => a + val(p.id, n), 0) - 100) >= 0.001);
   const m = $("smsg");
-  if (PRIZES.some(p => [2, 4, 6].some(n => val(p.id, n) < 0))) { m.className = "msg warn"; m.textContent = "机率不能是负数"; return; }
+  if (PRIZES.some(p => [2, 4, 6].some(n => val(p.id, n) < 0))) { m.className = "msg warn"; m.textContent = "概率不能是负数"; return; }
   if (bad.length) { m.className = "msg warn"; m.textContent = bad.map(n => n + "盒").join("、") + " 合计要等于 100%"; return; }
   const odds = {};
   PRIZES.forEach(p => { odds[p.id] = {2:val(p.id, 2), 4:val(p.id, 4), 6:val(p.id, 6)}; });
   try {
     const r = await api({a:"setOdds", odds});
     m.className = r.ok ? "msg good" : "msg warn";
-    m.textContent = r.ok ? "已保存，新客人马上用这个机率" : "保存不到，再试一次";
+    m.textContent = r.ok ? "已保存，新顾客马上用这个概率" : "保存不到，再试一次";
   } catch (err) { m.className = "msg warn"; m.textContent = "网络不稳，再试一次"; }
 };
 
 $("out").onclick = async () => {
   try { await api({a:"logout"}); } catch (e) {}
-  $("panel").hidden = true; $("out").hidden = true; $("login").hidden = false;
+  $("panel").hidden = true; $("login").hidden = false;
 };
 
 $("reload").onclick = loadLog;
+$("csv").onclick = exportCsv;
+$("findBtn").onclick = find;
 loadAll().catch(() => {});
 </script>
 </body>

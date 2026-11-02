@@ -74,12 +74,15 @@ h1{margin:10px 0 2px;text-align:center;font-size:42px;line-height:1.15;font-weig
 .row.top{background:var(--gold)}
 .note{margin:12px 0 0;text-align:center;font-size:14px;color:#CFE0E5}
 @media(max-height:600px){.stage{transform:scale(.68);margin:-48px 0}}
+.pvbar{display:flex;justify-content:space-between;align-items:center;margin:-22px -16px 14px;padding:8px 14px;background:#6b3fa0;color:#fff;font-size:13px}
+.pvbar a{color:#fff;font-weight:700}
 [hidden]{display:none!important}
 canvas{position:fixed;top:0;left:0;z-index:30;pointer-events:none}
 </style>
 </head>
 <body>
 <main class="app">
+  <div class="pvbar" id="pvBar" hidden><span>👁 预览模式，不影响真实数据</span><a href="admin">退出</a></div>
   <span class="tag" id="tag"></span>
   <h1 id="title"></h1>
   <p class="sub" id="sub"></p>
@@ -142,11 +145,13 @@ const TIERS = {
 const $ = id => document.getElementById(id);
 const key = new URLSearchParams(location.search).get("k");
 const urlN = KEYS[key];
+const preview = new URLSearchParams(location.search).get("preview") === "1";
 let tier = 2, left = 0, who = "", phone = "", seq = [], cells = {}, busy = false;
 const byId = id => POOL.find(p => p.id === id);
 
 // progress on this phone only counts if it belongs to the prizes the server just returned
 function loadCells() {
+  if (preview) return {};
   try {
     const saved = JSON.parse(localStorage.getItem("mf1111-" + phone));
     return saved && JSON.stringify(saved.seq) === JSON.stringify(seq) ? saved.cells : {};
@@ -154,6 +159,7 @@ function loadCells() {
 }
 
 function saveCells() {
+  if (preview) return;
   try { localStorage.setItem("mf1111-" + phone, JSON.stringify({seq, cells})); } catch (e) {}
 }
 
@@ -306,6 +312,7 @@ async function drawPicture(won, count) {
 }
 
 async function sendResult() {
+  if (preview) { $("sendNote").textContent = "预览模式，不会发出去"; return; }
   const chat = "https://wa.me/601135155309?text=" + encodeURIComponent(message);
   const blob = await picture;
   if (!blob) { location.href = chat; return; }
@@ -359,6 +366,15 @@ $("cname").oninput = () => { $("err").textContent = ""; syncField(); };
 $("cname").onkeydown = $("phone").onkeydown = e => { if (e.key === "Enter") startGame(); };
 look(urlN || 2);
 syncField();
+
+async function startPreview() {
+  try {
+    const r = await api({a:"preview", k:key});
+    if (!r.ok) { $("err").textContent = "请先登录后台"; return; }
+    who = "预览"; phone = "0000"; $("pvBar").hidden = false; paint(r);
+  } catch (e) { $("err").textContent = "网络不稳，再试一次"; }
+}
+if (preview && urlN) startPreview();
 </script>
 </body>
 </html>
