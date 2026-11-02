@@ -4,18 +4,23 @@ import { adminCookieOK, json, kvGet, kvSet } from './_lib.js';
 
 const KEYS = { x7k2: 2, q4m9: 4, z8p3: 6 };   // 3 个链接的暗码 → 可拆几次
 const LINKS = [2, 4, 6];
+// 目标成本率(含抽奖、已扣 RM50):2盒 35.7%,4盒 39–39.9%,6盒 41–42.8%
 const DEFAULT_ODDS = {
-  sachet5:  { 2: 55.5, 4: 37,  6: 29 },
-  sachet10: { 2: 10,   4: 20,  6: 25 },
-  wow2:     { 2: 25,   4: 20,  6: 15 },
-  wow5:     { 2: 4,    4: 10,  6: 12 },
-  wow10:    { 2: 0.5,  4: 2,   6: 4 },
-  care_oolong: { 2: 2, 4: 3, 6: 4 },
-  care_aloe:   { 2: 2, 4: 3, 6: 4 },
-  kegel:    { 2: 0.5,  4: 2,   6: 3 },
-  box1:     { 2: 0.5,  4: 2.5, 6: 3.5 },
-  box2:     { 2: 0,    4: 0.5, 6: 0.5 },
+  wow1:     { 2: 0,    4: 40,  6: 0 },
+  sachet3:  { 2: 0,    4: 40,  6: 0 },
+  sachet5:  { 2: 55.5, 4: 8,   6: 29 },
+  sachet10: { 2: 10,   4: 1.5, 6: 25 },
+  wow2:     { 2: 25,   4: 8,   6: 15 },
+  wow5:     { 2: 4,    4: 1.3, 6: 12 },
+  wow10:    { 2: 0.5,  4: 0.3, 6: 4 },
+  care_oolong: { 2: 2, 4: 0.2, 6: 4 },
+  care_aloe:   { 2: 2, 4: 0.2, 6: 4 },
+  kegel:    { 2: 0.5,  4: 0.2, 6: 3 },
+  box1:     { 2: 0.5,  4: 0.2, 6: 3.5 },
+  box2:     { 2: 0,    4: 0.1, 6: 0.5 },
 };
+const ODDS_VERSION = 2;   // 改了奖品表就加一,旧的保存值不再用
+const SMALL = ['wow1', 'sachet3'];   // 小奖不用来吸引升级,抽不到就不显示
 const IDS = Object.keys(DEFAULT_ODDS);
 
 async function ensure(env) {
@@ -27,7 +32,8 @@ async function ensure(env) {
 
 async function loadCfg(env) {
   const c = await kvGet(env, 'd11_config');
-  return { open: !!(c && c.open), odds: { ...DEFAULT_ODDS, ...((c && c.odds) || {}) } };
+  const saved = c && c.v === ODDS_VERSION ? c.odds : null;
+  return { open: !!(c && c.open), odds: saved ? { ...DEFAULT_ODDS, ...saved } : { ...DEFAULT_ODDS } };
 }
 
 // 马来西亚 01x / 60 / +60,新加坡 8 位 / 65 / +65
@@ -57,7 +63,7 @@ const drawAll = (odds, n) => [FIRST, ...Array.from({ length: n - 1 }, () => pick
 function locks(odds, n) {
   const out = {};
   for (const id of IDS) {
-    if (odds[id][n] > 0) continue;
+    if (odds[id][n] > 0 || SMALL.includes(id)) continue;
     const up = LINKS.find(l => l > n && odds[id][l] > 0);
     if (up) out[id] = up;
   }
@@ -119,11 +125,11 @@ async function admin(env, b) {
   if (b.a === 'setOdds') {
     const odds = validOdds(b.odds);
     if (!odds) return json({ ok: false, error: 'sum' });
-    await kvSet(env, 'd11_config', { open: cfg.open, odds });
+    await kvSet(env, 'd11_config', { v: ODDS_VERSION, open: cfg.open, odds });
     return json({ ok: true });
   }
   if (b.a === 'setOpen') {
-    await kvSet(env, 'd11_config', { open: !!b.open, odds: cfg.odds });
+    await kvSet(env, 'd11_config', { v: ODDS_VERSION, open: !!b.open, odds: cfg.odds });
     return json({ ok: true, open: !!b.open });
   }
   if (b.a === 'reset') {

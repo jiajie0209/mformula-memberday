@@ -4,6 +4,8 @@ const KEYS = {x7k2:2, q4m9:4, z8p3:6};
 // cost = 成本 RM;机率存在服务器,后台可改
 const PRIZES = [
   {id:"rm50",     name:"RM50 现金回扣", short:"RM50 回扣", cost:0, fixed:true},
+  {id:"wow1",     name:"WoW Care x1",   short:"WoW x1",  cost:2},
+  {id:"sachet3",  name:"3包 MFormula",  short:"3包",     cost:2.7},
   {id:"sachet5",  name:"5包 MFormula",  short:"5包",     cost:4.5},
   {id:"sachet10", name:"10包 MFormula", short:"10包",    cost:9},
   {id:"wow2",     name:"WoW Care x2",   short:"WoW x2",  cost:4},
