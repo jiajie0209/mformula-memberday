@@ -106,7 +106,8 @@ canvas{position:fixed;top:0;left:0;z-index:30;pointer-events:none}
     <h2>你的双11 礼物</h2>
     <div id="list"></div>
     <p class="note">礼物会跟你的订单一起寄出</p>
-    <a class="btn" id="send">发给 Ah Kent</a>
+    <button class="btn" id="send">截图发给 Ah Kent</button>
+    <p class="note" id="sendNote"></p>
   </section>
 </main>
 
@@ -257,13 +258,62 @@ $("next").onclick = () => {
   if (left > 0) nudge(); else finish();
 };
 
+let picture = null, message = "";
+
 function finish() {
   const count = {};
   Object.values(cells).forEach(id => count[id] = (count[id] || 0) + 1);
-  $("list").innerHTML = POOL.filter(p => count[p.id]).map(p => `<div class="row${p.top ? " top" : ""}"><img src="${p.img}" alt=""><b>${p.name}</b><span>${count[p.id]} 次</span></div>`).join("");
-  const text = "Hi Kent，我是 " + who + "，我拆完红包了：" + POOL.filter(p => count[p.id]).map(p => p.name + "（" + count[p.id] + " 次）").join("，");
-  $("send").href = "https://wa.me/601135155309?text=" + encodeURIComponent(text);
+  const won = POOL.filter(p => count[p.id]);
+  $("list").innerHTML = won.map(p => `<div class="row${p.top ? " top" : ""}"><img src="${p.img}" alt=""><b>${p.name}</b><span>${count[p.id]} 次</span></div>`).join("");
+  message = "Hi Kent，我是 " + who + "，我拆完红包了：" + won.map(p => p.name + "（" + count[p.id] + " 次）").join("，");
+  picture = drawPicture(won, count).catch(() => null);
   $("play").hidden = true; $("sum").hidden = false;
+}
+
+const loadImg = src => new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = src; });
+
+// the "screenshot": name, last 4 digits, package and prizes as one picture
+async function drawPicture(won, count) {
+  const W = 720, rowH = 124, H = 330 + won.length * rowH;
+  const c = document.createElement("canvas"); c.width = W; c.height = H;
+  const x = c.getContext("2d");
+  const font = (px, weight) => `${weight} ${px}px "PingFang SC","Noto Sans SC","Microsoft YaHei",sans-serif`;
+  x.fillStyle = "#062530"; x.fillRect(0, 0, W, H);
+  x.textAlign = "center";
+  x.fillStyle = "#F6D98B"; x.font = font(26, 400); x.fillText(TIERS[tier].tag, W / 2, 62);
+  x.fillStyle = "#F2C14E"; x.font = font(52, 800); x.fillText("你的双11 礼物", W / 2, 132);
+  x.fillStyle = "#FFFFFF"; x.font = font(30, 700); x.fillText(who, W / 2, 192);
+  x.fillStyle = "#CFE0E5"; x.font = font(24, 400); x.fillText("电话尾号 " + phone.slice(-4), W / 2, 232);
+  const imgs = await Promise.all(won.map(p => loadImg(p.img)));
+  won.forEach((p, i) => {
+    const y = 262 + i * rowH, h = rowH - 16;
+    x.fillStyle = p.top ? "#F2C14E" : "#EFEFEF";
+    x.fillRect(32, y, W - 64, h);
+    const im = imgs[i], s = Math.min(92 / im.width, 92 / im.height);
+    x.drawImage(im, 62 + (92 - im.width * s) / 2, y + 8 + (92 - im.height * s) / 2, im.width * s, im.height * s);
+    x.textAlign = "left"; x.fillStyle = "#062530"; x.font = font(32, 700); x.fillText(p.name, 176, y + 66);
+    x.textAlign = "right"; x.font = font(28, 400); x.fillText(count[p.id] + " 次", W - 60, y + 64);
+  });
+  x.textAlign = "center"; x.fillStyle = "#CFE0E5"; x.font = font(24, 400);
+  x.fillText("礼物会跟你的订单一起寄出", W / 2, H - 28);
+  return new Promise(ok => c.toBlob(ok, "image/png"));
+}
+
+async function sendResult() {
+  const chat = "https://wa.me/601135155309?text=" + encodeURIComponent(message);
+  const blob = await picture;
+  if (!blob) { location.href = chat; return; }
+  const file = new File([blob], "mformula-1111.png", {type:"image/png"});
+  if (navigator.canShare && navigator.canShare({files:[file]})) {
+    try { await navigator.share({files:[file], text:message}); return; }
+    catch (e) { if (e.name === "AbortError") return; }
+  }
+  // no share sheet here: save the picture, then open the chat
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = file.name;
+  document.body.appendChild(a); a.click(); a.remove();
+  $("sendNote").textContent = "图片已经存好，在 WhatsApp 发给 Ah Kent";
+  setTimeout(() => { location.href = chat; }, 900);
 }
 
 function nudge() {
@@ -297,6 +347,7 @@ function confetti(n) {
 }
 
 $("go").onclick = startGame;
+$("send").onclick = sendResult;
 $("phone").oninput = () => { $("err").textContent = ""; };
 $("cname").oninput = () => { $("err").textContent = ""; syncField(); };
 $("cname").onkeydown = $("phone").onkeydown = e => { if (e.key === "Enter") startGame(); };

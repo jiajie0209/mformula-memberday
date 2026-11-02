@@ -655,13 +655,23 @@ function renderCampaigns(){
   const box=$('campBody'); if(box) box.innerHTML='<div class="adm-empty">加载中…</div>';
   loadCampaignList();
 }
+async function d11Card(){                                       // 双11 拆红包:资料在 /api/d11,点进去是自己的后台
+  const r=await apiPOST('/api/d11',{a:'summary'});
+  if(!r||!r.ok) return '';
+  const bd=r.open?CAMP_BADGE.running:['⏸ 未开放','cb-prep'];
+  return `<a class="cl-card ${bd[1]}" href="/d11/admin" style="text-decoration:none">
+      <div class="cl-row"><span class="cl-title">双11 · 十一月拆红包</span><span class="cl-badge ${bd[1]}">${bd[0]}</span></div>
+      <div class="cl-meta">D11 · 🧧 拆红包 · 2026-11-02 ~ 2026-11-11</div>
+      <div class="cl-mini">👥 ${r.players} · 🧧 ${r.opens}</div>
+      <div class="cl-go">管理 →</div></a>`;
+}
 async function loadCampaignList(){
-  const r=await adminWrite({action:'listCampaigns'});
+  const [r,d11]=await Promise.all([adminWrite({action:'listCampaigns'}),d11Card()]);
   const box=$('campBody'); if(!box) return;
   if(!r||!r.ok){ box.innerHTML='<div class="cs-bad">连不上服务器,刷新重试</div>'; return; }
   const camps=(r.campaigns||[]).slice().sort((a,b)=>(CAMP_ORDER[a.status]??9)-(CAMP_ORDER[b.status]??9));
-  if(!camps.length){ box.innerHTML='<div class="adm-empty">还没有活动 —— 点右上「+ 增加活动」建一个 👆</div>'; return; }
-  box.innerHTML=camps.map(c=>{
+  if(!camps.length){ box.innerHTML=d11+'<div class="adm-empty">还没有活动 —— 点右上「+ 增加活动」建一个 👆</div>'; return; }
+  box.innerHTML=d11+camps.map(c=>{
     const bd=CAMP_BADGE[c.status]||['·','']; const act=c.status==='ended'?'查看存档':(c.status==='running'?'管理':'编辑草稿');
     const st=c.stats?`<div class="cl-mini">👥 ${c.stats.participants} · 🛒 ${c.stats.orders} · 🎡 ${c.stats.spins}</div>`:'';
     return `<button class="cl-card ${bd[1]}" data-camp="${c.id}" data-status="${c.status}">

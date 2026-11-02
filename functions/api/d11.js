@@ -93,6 +93,10 @@ async function admin(env, b) {
     const r = await env.DB.prepare('SELECT phone,name,link,seq,at FROM d11_plays ORDER BY at DESC').all();
     return json({ ok: true, open: cfg.open, odds: cfg.odds, rows: (r.results || []).map(x => ({ ...x, seq: JSON.parse(x.seq) })) });
   }
+  if (b.a === 'summary') {
+    const r = await env.DB.prepare('SELECT COUNT(*) AS players, COALESCE(SUM(link),0) AS opens FROM d11_plays').first();
+    return json({ ok: true, open: cfg.open, players: r.players, opens: r.opens });
+  }
   if (b.a === 'setOdds') {
     const odds = validOdds(b.odds);
     if (!odds) return json({ ok: false, error: 'sum' });
