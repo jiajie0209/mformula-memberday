@@ -152,12 +152,14 @@ const ADMIN_LB = [
 ];
 
 /* ---------------- 状态 ---------------- */
+const LOGOUT_AT='2026-11-02';   // 改这个日期 = 除了管理员,所有人下次打开都要重新登入(之前活动的登入状态清掉)
 let S = load();
 function load(){
   const def = { name:'', phone:'', loggedIn:false, admin:false, day:1, chances:drawsForDay(1),
                 won:[], wonAt:{}, bundle:[], pickPkg:'2box', codes:{}, usedCodes:[] };
   let s={};
   try{ s = JSON.parse(localStorage.getItem('mfmemberday')) || {}; }catch(e){}
+  try{ if(localStorage.getItem('mf_logout')!==LOGOUT_AT){ if(!s.admin){ s={}; localStorage.removeItem('mfmemberday'); } localStorage.setItem('mf_logout', LOGOUT_AT); } }catch(e){}
   const m = { ...def, ...s };
   if(!Array.isArray(m.won)) m.won=[];
   if(!Array.isArray(m.bundle)) m.bundle=[];
