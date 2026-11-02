@@ -8,6 +8,8 @@ const PRIZES = [
   {id:"wow2",     name:"WoW Care x2",   short:"WoW x2",  cost:4},
   {id:"wow5",     name:"WoW Care x5",   short:"WoW x5",  cost:10},
   {id:"wow10",    name:"WoW Care x10",  short:"WoW x10", cost:20},
+  {id:"care_oolong", name:"CARE 茶香润滑油", short:"茶香润滑油", cost:16},
+  {id:"care_aloe",   name:"CARE 芦荟润滑油", short:"芦荟润滑油", cost:16},
   {id:"kegel",    name:"凯戈尔训练器",    short:"训练器",  cost:30},
   {id:"box1",     name:"1盒 MFormula",  short:"1盒",     cost:38},
   {id:"box2",     name:"2盒 MFormula",  short:"2盒",     cost:76}

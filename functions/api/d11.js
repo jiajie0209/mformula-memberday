@@ -5,11 +5,13 @@ import { adminCookieOK, json, kvGet, kvSet } from './_lib.js';
 const KEYS = { x7k2: 2, q4m9: 4, z8p3: 6 };   // 3 个链接的暗码 → 可拆几次
 const LINKS = [2, 4, 6];
 const DEFAULT_ODDS = {
-  sachet5:  { 2: 59.5, 4: 43,  6: 37 },
+  sachet5:  { 2: 55.5, 4: 37,  6: 29 },
   sachet10: { 2: 10,   4: 20,  6: 25 },
   wow2:     { 2: 25,   4: 20,  6: 15 },
   wow5:     { 2: 4,    4: 10,  6: 12 },
   wow10:    { 2: 0.5,  4: 2,   6: 4 },
+  care_oolong: { 2: 2, 4: 3, 6: 4 },
+  care_aloe:   { 2: 2, 4: 3, 6: 4 },
   kegel:    { 2: 0.5,  4: 2,   6: 3 },
   box1:     { 2: 0.5,  4: 2.5, 6: 3.5 },
   box2:     { 2: 0,    4: 0.5, 6: 0.5 },
