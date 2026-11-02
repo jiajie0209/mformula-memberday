@@ -73,6 +73,8 @@ h1{margin:10px 0 2px;text-align:center;font-size:42px;line-height:1.15;font-weig
 .row b{flex:1;font-size:16px}
 .row.top{background:var(--gold)}
 .note{margin:12px 0 0;text-align:center;font-size:14px;color:#CFE0E5}
+.rule{display:flex;flex-wrap:wrap;justify-content:center;margin:0 0 10px}
+.rule span{margin:3px 4px;padding:5px 11px;border:1px solid var(--gold);border-radius:999px;background:rgba(242,193,78,.16);color:#FFE7A8;font-size:14px;font-weight:700;white-space:nowrap}
 @media(max-height:600px){.stage{transform:scale(.68);margin:-48px 0}}
 .topbar{position:sticky;top:0;z-index:10;margin:-22px -16px 14px}
 .pvbar{display:flex;justify-content:space-between;align-items:center;padding:8px 14px;background:#6b3fa0;color:#fff;font-size:13px}
@@ -113,6 +115,7 @@ canvas{position:fixed;top:0;left:0;z-index:30;pointer-events:none}
 
   <section class="sum" id="sum" hidden>
     <h2>你的 6 份惊喜礼</h2>
+    <div class="rule"><span>2盒 选 1 样</span><span>4盒 选 3 样</span><span>6盒 6 样全部拿</span></div>
     <p class="note" style="margin:0 0 12px;color:#F6D98B;font-weight:700">记得截图发给 Ah Kent</p>
     <div id="list"></div>
     <p class="note">惊喜礼会跟你的订单一起寄出</p>
@@ -267,7 +270,7 @@ const loadImg = src => new Promise((ok, no) => { const i = new Image(); i.onload
 
 // the "screenshot": name, last 4 digits, package and prizes as one picture
 async function drawPicture(won) {
-  const W = 720, rowH = 124, H = 330 + won.length * rowH;
+  const W = 720, rowH = 124, H = 390 + won.length * rowH;
   const c = document.createElement("canvas"); c.width = W; c.height = H;
   const x = c.getContext("2d");
   const font = (px, weight) => `${weight} ${px}px "PingFang SC","Noto Sans SC","Microsoft YaHei",sans-serif`;
@@ -286,7 +289,9 @@ async function drawPicture(won) {
     x.drawImage(im, 62 + (92 - im.width * s) / 2, y + 8 + (92 - im.height * s) / 2, im.width * s, im.height * s);
     x.textAlign = "left"; x.fillStyle = "#062530"; x.font = font(32, 700); x.fillText(p.name, 176, y + 66);
   });
-  x.textAlign = "center"; x.fillStyle = "#CFE0E5"; x.font = font(24, 400);
+  x.textAlign = "center"; x.fillStyle = "#F2C14E"; x.font = font(28, 700);
+  x.fillText("2盒选 1 样 · 4盒选 3 样 · 6盒 6 样全部拿", W / 2, H - 84);
+  x.fillStyle = "#CFE0E5"; x.font = font(24, 400);
   x.fillText("惊喜礼会跟你的订单一起寄出", W / 2, H - 28);
   return new Promise(ok => c.toBlob(ok, "image/png"));
 }
